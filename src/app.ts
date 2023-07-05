@@ -12,6 +12,7 @@ import errorHandler from './middlewares/errorHandling';
 import authRouter from './routes/authRoute';
 import uploadsRouter from './routes/uploadsRouter';
 import { LoggerService } from './utils/loggerService';
+import { UserController } from './controllers/usersController';
 
 export class App {
 	app: Express;
@@ -19,6 +20,7 @@ export class App {
 	port: number | string;
 	uploadsPath: string;
 	logger: LoggerService;
+	userController: UserController;
 
 	constructor(logger: LoggerService) {
 		/**
@@ -31,6 +33,7 @@ export class App {
 		this.port = process.env.PORT || 4000;
 		this.uploadsPath = path.join(__dirname, '../uploads');
 		this.logger = logger;
+		this.userController = new UserController(this.logger);
 	}
 
 	/**
@@ -52,6 +55,7 @@ export class App {
 	useRoutes(): void {
 		this.app.use('/auth', authRouter);
 		this.app.use('/upload', uploadsRouter);
+		this.app.use('/user', this.userController.router);
 		this.app.use(errorHandler);
 	}
 
