@@ -4,13 +4,13 @@ import {
 	GroupedAlternativeValidationError, Result, UnknownFieldsError,
 	validationResult
 } from 'express-validator';
-import ApiError from '../utils/apiError';
+import { HttpError } from '../utils/httpError';
 
 export default (req: Request, res: Response, next: NextFunction) => {
 	const errors: Result<AlternativeValidationError | GroupedAlternativeValidationError | UnknownFieldsError | FieldValidationError> = validationResult(req);
 
 	if (!errors.isEmpty()) {
-		return next(ApiError.badRequest('Ошибка при валидации', errors.array()));
+		return next(HttpError.badRequest('Ошибка при валидации', errors.array()));
 	}
 
 	next();

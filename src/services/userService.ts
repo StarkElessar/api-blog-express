@@ -4,18 +4,18 @@ import bcrypt from 'bcrypt';
 import { prisma } from './prismaService';
 import MailService from './mailService';
 import TokenService, { ITokenPairs } from './tokenService';
-import ApiError from '../utils/apiError';
+import { HttpError } from '../utils/httpError';
 import UserDto from '../dtos/userDto';
 import { UserEntity } from '../entities/UserEntity';
 import { ITokenEntity } from '../entities/TokenEntity';
-import { IUserData } from '../types/user.interface';
+import { IUserData, IUserLoginData, IUserRegData } from '../types/user.interface';
 
 class UserService {
-	async registration(email: string, password: string, role: string): Promise<IUserData> {
+	async registration({ email, password, role = 'user' }: IUserRegData): Promise<IUserData> {
 		const candidate: UserEntity | null = await prisma.user.findFirst({ where: { email } });
 
 		if (candidate) {
-			throw ApiError.badRequest(`Пользователь с таким почтовым адресом ${email} уже существует`);
+			throw HttpError.badRequest(`Пользователь с таким почтовым адресом ${email} уже существует`);
 		}
 
 		const hashPassword: string = await bcrypt.hash(password, 10);
@@ -38,15 +38,15 @@ class UserService {
 		return { ...tokens, user: userDto };
 	}
 
-	async login(email: string, password: string): Promise<IUserData> {
+	async login({ email, password }: IUserLoginData): Promise<IUserData> {
 		const user: UserEntity | null = await prisma.user.findFirst({ where: { email } });
 		if (!user) {
-			throw ApiError.badRequest('Пользователь с таким email не найден');
+			throw HttpError.badRequest('Пользователь с таким email не найден');
 		}
 
 		const isPasswordEquals: boolean = await bcrypt.compare(password, user.password);
 		if (!isPasswordEquals) {
-			throw ApiError.badRequest('Неверный пароль');
+			throw HttpError.badRequest('Неверный пароль');
 		}
 
 		const userDto: UserDto = new UserDto(user);
@@ -61,7 +61,7 @@ class UserService {
 		const user: UserEntity | null = await prisma.user.findFirst({ where: { activationLink } });
 
 		if (!user) {
-			throw ApiError.badRequest('Некорректная ссылка активации');
+			throw HttpError.badRequest('Некорректная ссылка активации');
 		}
 
 		return prisma.user.update({
@@ -72,7 +72,7 @@ class UserService {
 
 	async logout(refreshToken: string) {
 		if (!refreshToken) {
-			throw ApiError.unAuthorizedError();
+			throw HttpError.unAuthorizedError('logout');
 		}
 
 		return TokenService.removeToken(refreshToken);
@@ -80,20 +80,20 @@ class UserService {
 
 	async refresh(refreshToken: string): Promise<IUserData> {
 		if (!refreshToken) {
-			throw ApiError.unAuthorizedError();
+			throw HttpError.unAuthorizedError('refresh');
 		}
 
 		const userData: UserDto | null = TokenService.validateRefreshToken(refreshToken);
 		const tokenFromDB: ITokenEntity = await TokenService.findToken(refreshToken);
 
 		if (!userData || !tokenFromDB) {
-			throw ApiError.unAuthorizedError();
+			throw HttpError.unAuthorizedError('refresh');
 		}
 
 		const user: UserEntity | null = await prisma.user.findFirst({ where: { id: userData.id } });
 
 		if (!user) {
-			throw ApiError.badRequest('Пользователь не найден');
+			throw HttpError.badRequest('Пользователь не найден');
 		}
 
 		const userDto: UserDto = new UserDto(user);

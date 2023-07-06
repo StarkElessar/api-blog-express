@@ -1,6 +1,7 @@
 import { BaseController } from './baseController';
 import { LoggerService } from '../utils/loggerService';
 import { Request, NextFunction, Response } from 'express';
+import { HttpError } from '../utils/httpError';
 
 export class UserController extends BaseController {
 	constructor(logger: LoggerService) {
@@ -17,6 +18,7 @@ export class UserController extends BaseController {
 	}
 
 	login(req: Request, res: Response, next: NextFunction): void {
-		this.ok(res, 'login');
+		//this.ok(res, 'login');
+		next(HttpError.unAuthorizedError('login'));
 	}
 }

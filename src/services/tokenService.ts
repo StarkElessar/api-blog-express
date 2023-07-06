@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 import { prisma } from './prismaService';
 import UserDto from '../dtos/userDto';
 import { TokenEntity } from '../entities/TokenEntity';
-import ApiError from '../utils/apiError';
+import { HttpError } from '../utils/httpError';
 
 export interface ITokenPairs {
 	accessToken: string;
@@ -63,7 +63,7 @@ class TokenService {
 		const tokenData: TokenEntity | null = await prisma.token.findFirst({ where: { refreshToken } });
 
 		if (!tokenData) {
-			throw ApiError.badRequest('Токен не найден');
+			throw HttpError.badRequest('Токен не найден');
 		}
 
 		return tokenData;
