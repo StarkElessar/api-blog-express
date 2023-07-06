@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import UserService from '../services/userService';
 import { UserEntity } from '../entities/UserEntity';
-import { IUserData } from '../types/user.interface';
+import { IUserData, IUserLoginData, IUserRegData } from '../types/user.interface';
 
 class AuthController {
 	/**
@@ -9,14 +9,9 @@ class AuthController {
 	 * @desc Регистрация
 	 * @access Public
 	 */
-	async register(req: Request<{}, {}, {
-		email: string,
-		password: string,
-		role: string | undefined
-	}, {}, {}>, res: Response, next: NextFunction) {
+	async register(req: Request<{}, {}, IUserRegData, {}, {}>, res: Response, next: NextFunction) {
 		try {
-			const { email, password, role = 'user' } = req.body;
-			const userData: IUserData = await UserService.registration(email, password, role);
+			const userData: IUserData = await UserService.registration(req.body);
 
 			res.cookie('refreshToken', userData.refreshToken, {
 				maxAge: 30 * 24 * 60 * 60 * 1000,
@@ -34,10 +29,9 @@ class AuthController {
 	 * @desc Авторизация
 	 * @access Public
 	 */
-	async login(req: Request, res: Response, next: NextFunction) {
+	async login(req: Request<{}, {}, IUserLoginData, {}, {}>, res: Response, next: NextFunction) {
 		try {
-			const { email, password } = req.body;
-			const userData = await UserService.login(email, password);
+			const userData: IUserData = await UserService.login(req.body);
 
 			res.cookie('refreshToken', userData.refreshToken, {
 				maxAge: 30 * 24 * 60 * 60 * 1000,
@@ -55,9 +49,9 @@ class AuthController {
 	 * @desc Активация аккаунта
 	 * @access Public
 	 */
-	async activate(req: Request, res: Response, next: NextFunction) {
+	async activate(req: Request<{ link: string }, {}, {}, {}, {}>, res: Response, next: NextFunction) {
 		try {
-			const activationLink = req.params.link;
+			const activationLink: string = req.params.link;
 			await UserService.activate(activationLink);
 
 			return res.redirect(process.env.CLIENT_URL as string);
@@ -84,10 +78,15 @@ class AuthController {
 		}
 	}
 
+	/**
+	 * @route POST /refresh
+	 * @desc Обновление refresh токена
+	 * @access Public
+	 * */
 	async refresh(req: Request, res: Response, next: NextFunction) {
 		try {
 			const { refreshToken } = req.cookies;
-			const userData = await UserService.refresh(refreshToken);
+			const userData: IUserData = await UserService.refresh(refreshToken);
 
 			res.cookie('refreshToken', userData.refreshToken, {
 				maxAge: 30 * 24 * 60 * 60 * 1000,
