@@ -1,7 +1,8 @@
 import { Logger } from 'tslog';
 import * as fs from 'fs';
+import { ILoggerService } from '../types/loggerService.interface';
 
-export class LoggerService {
+export class LoggerService implements ILoggerService {
 	public logger: Logger<Logger<any>>;
 	private readonly logFilePath: string;
 
