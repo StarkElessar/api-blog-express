@@ -1,5 +1,4 @@
-import { Express } from 'express';
-import UserDto from '../../dtos/userDto';
+import UserDto from '../../dtos/user.dto';
 
 declare global {
 	namespace Express {
