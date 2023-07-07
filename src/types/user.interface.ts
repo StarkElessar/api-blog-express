@@ -1,4 +1,4 @@
-import UserDto from '../dtos/userDto';
+import UserDto from '../dtos/user.dto';
 
 export interface IUserLoginData {
 	email: string;
