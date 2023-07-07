@@ -1,8 +1,8 @@
 import { Logger } from 'tslog';
 import * as fs from 'fs';
-import { ILoggerService } from '../types/loggerService.interface';
+import { ILogger } from '../types/logger.interface';
 
-export class LoggerService implements ILoggerService {
+export class LoggerService implements ILogger {
 	public logger: Logger<Logger<any>>;
 	private readonly logFilePath: string;
 
@@ -16,16 +16,16 @@ export class LoggerService implements ILoggerService {
 		this.logFilePath = logFilePath;
 	}
 
-	log(...args: unknown[]): void {
-		this.logToFile('info', args);
+	async log(...args: unknown[]): Promise<void> {
+		await this.logToFile('info', args);
 	}
 
-	error(...args: unknown[]): void {
-		this.logToFile('error', args);
+	async error(...args: unknown[]): Promise<void> {
+		await this.logToFile('error', args);
 	}
 
-	warn(...args: unknown[]): void {
-		this.logToFile('warn', args);
+	async warn(...args: unknown[]): Promise<void> {
+		await this.logToFile('warn', args);
 	}
 
 	private async logToFile(level: 'info' | 'error' | 'warn', args: unknown[]): Promise<void> {

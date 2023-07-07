@@ -1,6 +1,7 @@
 import { ValidationError } from 'express-validator';
+import { IHttpError } from '../types/httpError.interface';
 
-export class HttpError extends Error {
+export class HttpError extends Error implements IHttpError {
 	statusCode: number;
 	errors: ValidationError[];
 	context?: string;
