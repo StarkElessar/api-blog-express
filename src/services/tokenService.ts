@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { prisma } from './prismaService';
-import UserDto from '../dtos/userDto';
+import UserDto from '../dtos/user.dto';
 import { TokenEntity } from '../entities/TokenEntity';
 import { HttpError } from '../utils/httpError';
 
@@ -11,11 +11,11 @@ export interface ITokenPairs {
 
 class TokenService {
 	generateTokens(payload: UserDto): ITokenPairs {
-		const accessToken = jwt.sign(payload, process.env.JWT_ACCESS_SECRET as string, {
+		const accessToken: string = jwt.sign(payload, process.env.JWT_ACCESS_SECRET as string, {
 			expiresIn: '30m',
 		});
 
-		const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET as string, {
+		const refreshToken: string = jwt.sign(payload, process.env.JWT_REFRESH_SECRET as string, {
 			expiresIn: '30d',
 		});
 

@@ -17,7 +17,7 @@ class MailService {
 	/**
 	 * Метод для отправки письма с активацией:
 	 * */
-	async sendActivationMail(email: string, link: string) {
+	async sendActivationMail(email: string, link: string): Promise<void> {
 		await this.transporter.sendMail({
 			from: process.env.SMTP_USER, // кто отправляет письмо
 			to: email, // кому отправить это письмо

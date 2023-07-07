@@ -5,7 +5,7 @@ import { prisma } from './prismaService';
 import MailService from './mailService';
 import TokenService, { ITokenPairs } from './tokenService';
 import { HttpError } from '../utils/httpError';
-import UserDto from '../dtos/userDto';
+import UserDto from '../dtos/user.dto';
 import { UserEntity } from '../entities/UserEntity';
 import { ITokenEntity } from '../entities/TokenEntity';
 import { IUserData, IUserLoginData, IUserRegData } from '../types/user.interface';
