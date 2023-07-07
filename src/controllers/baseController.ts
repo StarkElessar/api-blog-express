@@ -1,32 +1,33 @@
 import { Response, Router } from 'express';
 import { IControllerRoute } from '../types/route.interface';
-import { ILoggerService } from '../types/loggerService.interface';
+import { ILogger } from '../types/logger.interface';
+import { IBaseController } from '../types/baseController.interface';
 
-export abstract class BaseController {
+export abstract class BaseController implements IBaseController {
 	private readonly _router: Router;
 
-	protected constructor(private logger: ILoggerService) {
+	protected constructor(private logger: ILogger) {
 		this._router = Router();
 	}
 
-	get router() {
+	get router(): Router {
 		return this._router;
 	}
 
-	public send<T>(res: Response, code: number, message: T) {
+	public send<T>(res: Response, code: number, message: T): Response {
 		res.type('application/json');
 		return res.status(200).json(message);
 	}
 
-	public ok<T>(res: Response, message: T) {
+	public ok<T>(res: Response, message: T): Response {
 		return this.send<T>(res, 200, message);
 	}
 
-	public created(res: Response) {
+	public created(res: Response): Response {
 		return res.sendStatus(201);
 	}
 
-	protected bindRoutes(routes: IControllerRoute[]) {
+	protected bindRoutes(routes: IControllerRoute[]): void {
 		for (const route of routes) {
 			const handler = route.func.bind(this);
 

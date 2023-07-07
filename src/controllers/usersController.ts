@@ -1,10 +1,11 @@
 import { BaseController } from './baseController';
 import { Request, NextFunction, Response } from 'express';
 import { HttpError } from '../utils/httpError';
-import { ILoggerService } from '../types/loggerService.interface';
+import { ILogger } from '../types/logger.interface';
+import { IUserController } from '../types/userController.interface';
 
-export class UserController extends BaseController {
-	constructor(logger: ILoggerService) {
+export class UserController extends BaseController implements IUserController {
+	constructor(logger: ILogger) {
 		super(logger);
 
 		this.bindRoutes([
@@ -18,7 +19,6 @@ export class UserController extends BaseController {
 	}
 
 	login(req: Request, res: Response, next: NextFunction): void {
-		//this.ok(res, 'login');
 		next(HttpError.unAuthorizedError('login'));
 	}
 }

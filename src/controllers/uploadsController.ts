@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { HttpError } from '../utils/httpError';
 
 class UploadsController {
-	upload(req: Request, res: Response, next: NextFunction) {
+	upload(req: Request, res: Response, next: NextFunction): void {
 		const fileData: Express.Multer.File | undefined = req.file;
 
 		if (!fileData) {
