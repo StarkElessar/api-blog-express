@@ -8,22 +8,26 @@ import path from 'path';
 import logger from 'morgan';
 
 import { storage } from './utils/multerConfig';
-import { ExeptionFilter } from './middlewares/exeptionFilter';
 import authRouter from './routes/authRoute';
 import uploadsRouter from './routes/uploadsRouter';
-import { LoggerService } from './utils/loggerService';
-import { UserController } from './controllers/usersController';
+import { ILogger } from './types/logger.interface';
+import { IExeptionFilter } from './types/exeptionFilter.interface';
+import { IUserController } from './types/userController.interface';
 
 export class App {
 	app: Express;
 	server: Server;
 	port: number | string;
 	uploadsPath: string;
-	logger: LoggerService;
-	exeptionFilter: ExeptionFilter;
-	userController: UserController;
+	logger: ILogger;
+	exeptionFilter: IExeptionFilter;
+	userController: IUserController;
 
-	constructor(logger: LoggerService) {
+	constructor(
+		logger: ILogger,
+		exeptionFilter: IExeptionFilter,
+		userController: IUserController
+	) {
 		/**
 		 * Load environment variables from .env file,
 		 * where API keys and passwords are configured. dfs
@@ -34,8 +38,8 @@ export class App {
 		this.port = process.env.PORT || 4000;
 		this.uploadsPath = path.join(__dirname, '../uploads');
 		this.logger = logger;
-		this.exeptionFilter = new ExeptionFilter(this.logger);
-		this.userController = new UserController(this.logger);
+		this.exeptionFilter = exeptionFilter;
+		this.userController = userController;
 	}
 
 	/**
