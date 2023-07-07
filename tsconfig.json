@@ -4,6 +4,8 @@
 		"module": "CommonJS",
 		"moduleResolution": "Node",
 		"outDir": "./dist",
+		"experimentalDecorators": true,
+		"emitDecoratorMetadata": true,
 		"removeComments": true,
 		"sourceMap": true,
 		"strict": true,
