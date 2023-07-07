@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { HttpError } from '../utils/httpError';
 import TokenService from '../services/tokenService';
-import UserDto from '../dtos/userDto';
+import UserDto from '../dtos/user.dto';
 
 export default (req: Request, res: Response, next: NextFunction): void => {
 	try {

@@ -1,22 +1,22 @@
 import { Request, Response, NextFunction } from 'express';
 import { HttpError } from '../utils/httpError';
 import { IExeptionFilter } from '../types/exeptionFilter.interface';
-import { ILoggerService } from '../types/loggerService.interface';
+import { ILogger } from '../types/logger.interface';
 
 export class ExeptionFilter implements IExeptionFilter {
-	logger: ILoggerService;
+	logger: ILogger;
 
-	constructor(logger: ILoggerService) {
+	constructor(logger: ILogger) {
 		this.logger = logger;
 	}
 
-	catch(err: Error | HttpError, req: Request, res: Response, next: NextFunction) {
+	async catch(err: Error | HttpError, req: Request, res: Response, next: NextFunction): Promise<Response | undefined> {
 		if (err instanceof HttpError) {
-			this.logger.error(`[${err.context}] Ошибка ${err.statusCode}: ${err.message}`);
+			await this.logger.error(`[${err.context}] Ошибка ${err.statusCode}: ${err.message}`);
 			return res.status(err.statusCode).send({ err: err.message });
 		}
 
-		this.logger.error(`${err.message}`);
+		await this.logger.error(`${err.message}`);
 		res.status(500).send({ err: err.message });
 	}
 }
