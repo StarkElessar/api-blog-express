@@ -1,4 +1,4 @@
-import UserDto from '../dtos/user.dto';
+import { UserRegisterDto } from '../dtos/userRegister.dto';
 
 export interface IUserLoginData {
 	email: string;
@@ -10,7 +10,7 @@ export interface IUserRegData extends IUserLoginData {
 }
 
 export interface IUserData {
-	user: UserDto;
+	user: UserRegisterDto;
 	accessToken: string;
 	refreshToken: string;
 }

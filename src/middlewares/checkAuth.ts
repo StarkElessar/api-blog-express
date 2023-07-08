@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { HttpError } from '../utils/httpError';
 import TokenService from '../services/tokenService';
-import UserDto from '../dtos/user.dto';
+import { UserRegisterDto } from '../dtos/userRegister.dto';
 
 export default (req: Request, res: Response, next: NextFunction): void => {
 	try {
@@ -15,7 +15,7 @@ export default (req: Request, res: Response, next: NextFunction): void => {
 			return next(HttpError.noAccess());
 		}
 
-		const userData: UserDto | null = TokenService.validateAccessToken(accessToken);
+		const userData: UserRegisterDto | null = TokenService.validateAccessToken(accessToken);
 		if (!userData) {
 			return next(HttpError.noAccess());
 		}

@@ -5,7 +5,7 @@ import { prisma } from './prismaService';
 import MailService from './mailService';
 import TokenService, { ITokenPairs } from './tokenService';
 import { HttpError } from '../utils/httpError';
-import UserDto from '../dtos/user.dto';
+import { UserRegisterDto } from '../dtos/userRegister.dto';
 import { UserEntity } from '../entities/UserEntity';
 import { ITokenEntity } from '../entities/TokenEntity';
 import { IUserData, IUserLoginData, IUserRegData } from '../types/user.interface';
@@ -31,7 +31,7 @@ class UserService {
 
 		await MailService.sendActivationMail(email, `${process.env.API_URL}/api/activate/${activationLink}`);
 
-		const userDto: UserDto = new UserDto(user);
+		const userDto: UserRegisterDto = new UserRegisterDto(user);
 		const tokens: ITokenPairs = TokenService.generateTokens({ ...userDto });
 		await TokenService.saveToken(userDto.id as string, tokens.refreshToken);
 
@@ -49,7 +49,7 @@ class UserService {
 			throw HttpError.badRequest('Неверный пароль');
 		}
 
-		const userDto: UserDto = new UserDto(user);
+		const userDto: UserRegisterDto = new UserRegisterDto(user);
 		const tokens: ITokenPairs = TokenService.generateTokens({ ...userDto });
 
 		await TokenService.saveToken(userDto.id, tokens.refreshToken);
@@ -83,7 +83,7 @@ class UserService {
 			throw HttpError.unAuthorizedError('refresh');
 		}
 
-		const userData: UserDto | null = TokenService.validateRefreshToken(refreshToken);
+		const userData: UserRegisterDto | null = TokenService.validateRefreshToken(refreshToken);
 		const tokenFromDB: ITokenEntity = await TokenService.findToken(refreshToken);
 
 		if (!userData || !tokenFromDB) {
@@ -96,7 +96,7 @@ class UserService {
 			throw HttpError.badRequest('Пользователь не найден');
 		}
 
-		const userDto: UserDto = new UserDto(user);
+		const userDto: UserRegisterDto = new UserRegisterDto(user);
 		const tokens: ITokenPairs = TokenService.generateTokens({ ...userDto });
 
 		await TokenService.saveToken(userDto.id as string, tokens.refreshToken);

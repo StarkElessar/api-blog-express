@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { prisma } from './prismaService';
-import UserDto from '../dtos/user.dto';
+import { UserRegisterDto } from '../dtos/userRegister.dto';
 import { TokenEntity } from '../entities/TokenEntity';
 import { HttpError } from '../utils/httpError';
 
@@ -10,7 +10,7 @@ export interface ITokenPairs {
 }
 
 class TokenService {
-	generateTokens(payload: UserDto): ITokenPairs {
+	generateTokens(payload: UserRegisterDto): ITokenPairs {
 		const accessToken: string = jwt.sign(payload, process.env.JWT_ACCESS_SECRET as string, {
 			expiresIn: '30m',
 		});
@@ -25,17 +25,17 @@ class TokenService {
 		};
 	}
 
-	validateAccessToken(token: string): UserDto | null {
+	validateAccessToken(token: string): UserRegisterDto | null {
 		try {
-			return jwt.verify(token, process.env.JWT_ACCESS_SECRET as string) as UserDto;
+			return jwt.verify(token, process.env.JWT_ACCESS_SECRET as string) as UserRegisterDto;
 		} catch (error) {
 			return null;
 		}
 	}
 
-	validateRefreshToken(token: string): UserDto | null {
+	validateRefreshToken(token: string): UserRegisterDto | null {
 		try {
-			return jwt.verify(token, process.env.JWT_REFRESH_SECRET as string) as UserDto;
+			return jwt.verify(token, process.env.JWT_REFRESH_SECRET as string) as UserRegisterDto;
 		} catch (error) {
 			return null;
 		}
