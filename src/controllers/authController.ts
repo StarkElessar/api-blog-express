@@ -3,12 +3,14 @@ import { inject, injectable } from 'inversify';
 import { Request, Response, NextFunction } from 'express';
 
 import UserService from '../services/userService';
+import { User } from '../services/prismaService';
 import { UserEntity } from '../entities/UserEntity';
-import { IUserData, IUserLoginData, IUserRegData } from '../types/user.interface';
+import { IUserData, IUserRegData } from '../types/user.interface';
 import { BaseController } from './baseController';
 import { ILogger } from '../types/logger.interface';
 import { TYPES } from '../types';
 import { IAuthController } from '../types/authController.interface';
+import { UserLoginDto } from '../dtos/userLogin.dto';
 
 @injectable()
 export class AuthController extends BaseController implements IAuthController {
@@ -18,7 +20,7 @@ export class AuthController extends BaseController implements IAuthController {
 		this.bindRoutes([
 			{ path: '/register', method: 'post', func: this.register },
 			{ path: '/login', method: 'post', func: this.login },
-			{ path: '/activate/:link', method: 'get', func: this.activate },
+			{ path: '/activate/:link', method: 'get', func: this.activate as any },
 			{ path: '/logout', method: 'get', func: this.logout },
 			{ path: '/refresh', method: 'get', func: this.refresh },
 			{ path: '/all', method: 'get', func: this.getAll },
@@ -29,7 +31,7 @@ export class AuthController extends BaseController implements IAuthController {
 	 * @desc Регистрация
 	 * @access Public
 	 */
-	async register(req: Request<{}, {}, IUserRegData, {}, {}>, res: Response, next: NextFunction): Promise<Response | void> {
+	public async register(req: Request<{}, {}, IUserRegData>, res: Response, next: NextFunction): Promise<Response | void> {
 		try {
 			const userData: IUserData = await UserService.registration(req.body);
 
@@ -49,7 +51,7 @@ export class AuthController extends BaseController implements IAuthController {
 	 * @desc Авторизация
 	 * @access Public
 	 */
-	async login(req: Request<{}, {}, IUserLoginData, {}, {}>, res: Response, next: NextFunction): Promise<Response | void> {
+	public async login(req: Request<{}, {}, UserLoginDto>, res: Response, next: NextFunction): Promise<Response | void> {
 		try {
 			const userData: IUserData = await UserService.login(req.body);
 
@@ -69,7 +71,7 @@ export class AuthController extends BaseController implements IAuthController {
 	 * @desc Активация аккаунта
 	 * @access Public
 	 */
-	async activate(req: Request, res: Response, next: NextFunction): Promise<void> {
+	public async activate(req: Request<{ link: string }>, res: Response, next: NextFunction): Promise<void> {
 		try {
 			const activationLink: string = req.params.link;
 			await UserService.activate(activationLink);
@@ -85,7 +87,7 @@ export class AuthController extends BaseController implements IAuthController {
 	 * @desc Выход из аккаунта
 	 * @access Public
 	 * */
-	async logout(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
+	public async logout(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
 		try {
 			const { refreshToken } = req.cookies;
 			await UserService.logout(refreshToken);
@@ -103,7 +105,7 @@ export class AuthController extends BaseController implements IAuthController {
 	 * @desc Обновление refresh токена
 	 * @access Public
 	 * */
-	async refresh(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
+	public async refresh(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
 		try {
 			const { refreshToken } = req.cookies;
 			const userData: IUserData = await UserService.refresh(refreshToken);
@@ -119,9 +121,9 @@ export class AuthController extends BaseController implements IAuthController {
 		}
 	}
 
-	async getAll(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
+	public async getAll(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
 		try {
-			const users: UserEntity[] = await UserService.getAll();
+			const users: User[] = await UserService.getAll();
 
 			return res.json(users);
 		} catch (error) {

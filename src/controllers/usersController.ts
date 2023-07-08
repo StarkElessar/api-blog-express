@@ -1,10 +1,11 @@
 import 'reflect-metadata';
-import { BaseController } from './baseController';
+import { inject, injectable } from 'inversify';
 import { Request, NextFunction, Response } from 'express';
+
+import { BaseController } from './baseController';
 import { HttpError } from '../utils/httpError';
 import { ILogger } from '../types/logger.interface';
 import { IUserController } from '../types/userController.interface';
-import { inject, injectable } from 'inversify';
 import { TYPES } from '../types';
 
 @injectable()
@@ -18,11 +19,11 @@ export class UserController extends BaseController implements IUserController {
 		])
 	}
 
-	register(req: Request, res: Response, next: NextFunction): void {
+	public register(req: Request, res: Response, next: NextFunction): void {
 		this.ok(res, 'register');
 	}
 
-	login(req: Request, res: Response, next: NextFunction): void {
+	public login(req: Request, res: Response, next: NextFunction): void {
 		next(HttpError.unAuthorizedError('login'));
 	}
 }
