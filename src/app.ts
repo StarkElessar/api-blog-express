@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { inject, injectable } from 'inversify';
 import express, { Express } from 'express';
 import { Server } from 'http';
 import dotenv from 'dotenv';
@@ -9,26 +10,26 @@ import path from 'path';
 import logger from 'morgan';
 
 import { storage } from './utils/multerConfig';
-import uploadsRouter from './routes/uploadsRouter';
+import { TYPES } from './types';
 import { ILogger } from './types/logger.interface';
 import { IExeptionFilter } from './types/exeptionFilter.interface';
 import { IUserController } from './types/userController.interface';
-import { inject, injectable } from 'inversify';
-import { TYPES } from './types';
 import { IAuthController } from './types/authController.interface';
+import { IUploadsController } from './types/uploadsController.interface';
 
 @injectable()
 export class App {
-	app: Express;
-	server: Server;
-	port: number | string;
-	uploadsPath: string;
+	public app: Express;
+	public server: Server;
+	public port: number | string;
+	public uploadsPath: string;
 
 	constructor(
 		@inject(TYPES.ILogger) private logger: ILogger,
 		@inject(TYPES.ExeptionFilter) private exeptionFilter: IExeptionFilter,
 		@inject(TYPES.AuthController) private authController: IAuthController,
-		@inject(TYPES.UserController) private userController: IUserController
+		@inject(TYPES.UserController) private userController: IUserController,
+		@inject(TYPES.UploadsController) private uploadsController: IUploadsController
 	) {
 		/**
 		 * Load environment variables from .env file,
@@ -65,9 +66,9 @@ export class App {
 	 * Routing.
 	 * */
 	useRoutes(): void {
-		this.app.use('/upload', uploadsRouter);
-		this.app.use('/auth', this.authController.router);
-		//this.app.use('/user', this.userController.router);
+		this.app.use('/api/upload', this.uploadsController.router);
+		this.app.use('/api/auth', this.authController.router);
+		//this.app.use('api/user', this.userController.router);
 	}
 
 	/**
