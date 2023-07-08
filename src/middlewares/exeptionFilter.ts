@@ -1,14 +1,14 @@
+import 'reflect-metadata';
 import { Request, Response, NextFunction } from 'express';
 import { HttpError } from '../utils/httpError';
 import { IExeptionFilter } from '../types/exeptionFilter.interface';
 import { ILogger } from '../types/logger.interface';
+import { inject, injectable } from 'inversify';
+import { TYPES } from '../types';
 
+@injectable()
 export class ExeptionFilter implements IExeptionFilter {
-	logger: ILogger;
-
-	constructor(logger: ILogger) {
-		this.logger = logger;
-	}
+	constructor(@inject(TYPES.ILogger) private logger: ILogger) { }
 
 	async catch(err: Error | HttpError, req: Request, res: Response, next: NextFunction): Promise<Response | undefined> {
 		if (err instanceof HttpError) {

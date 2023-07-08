@@ -1,15 +1,35 @@
+import 'reflect-metadata';
+import { inject, injectable } from 'inversify';
 import { Request, Response, NextFunction } from 'express';
+
 import UserService from '../services/userService';
 import { UserEntity } from '../entities/UserEntity';
 import { IUserData, IUserLoginData, IUserRegData } from '../types/user.interface';
+import { BaseController } from './baseController';
+import { ILogger } from '../types/logger.interface';
+import { TYPES } from '../types';
+import { IAuthController } from '../types/authController.interface';
 
-class AuthController {
+@injectable()
+export class AuthController extends BaseController implements IAuthController {
+	constructor(@inject(TYPES.ILogger) private loggerService: ILogger) {
+		super(loggerService);
+
+		this.bindRoutes([
+			{ path: '/register', method: 'post', func: this.register },
+			{ path: '/login', method: 'post', func: this.login },
+			{ path: '/activate/:link', method: 'get', func: this.activate },
+			{ path: '/logout', method: 'get', func: this.logout },
+			{ path: '/refresh', method: 'get', func: this.refresh },
+			{ path: '/all', method: 'get', func: this.getAll },
+		])
+	}
 	/**
 	 * @route POST /auth/register
 	 * @desc Регистрация
 	 * @access Public
 	 */
-	async register(req: Request<{}, {}, IUserRegData, {}, {}>, res: Response, next: NextFunction) {
+	async register(req: Request<{}, {}, IUserRegData, {}, {}>, res: Response, next: NextFunction): Promise<Response | void> {
 		try {
 			const userData: IUserData = await UserService.registration(req.body);
 
@@ -29,7 +49,7 @@ class AuthController {
 	 * @desc Авторизация
 	 * @access Public
 	 */
-	async login(req: Request<{}, {}, IUserLoginData, {}, {}>, res: Response, next: NextFunction) {
+	async login(req: Request<{}, {}, IUserLoginData, {}, {}>, res: Response, next: NextFunction): Promise<Response | void> {
 		try {
 			const userData: IUserData = await UserService.login(req.body);
 
@@ -49,7 +69,7 @@ class AuthController {
 	 * @desc Активация аккаунта
 	 * @access Public
 	 */
-	async activate(req: Request<{ link: string }, {}, {}, {}, {}>, res: Response, next: NextFunction) {
+	async activate(req: Request, res: Response, next: NextFunction): Promise<void> {
 		try {
 			const activationLink: string = req.params.link;
 			await UserService.activate(activationLink);
@@ -65,7 +85,7 @@ class AuthController {
 	 * @desc Выход из аккаунта
 	 * @access Public
 	 * */
-	async logout(req: Request, res: Response, next: NextFunction) {
+	async logout(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
 		try {
 			const { refreshToken } = req.cookies;
 			await UserService.logout(refreshToken);
@@ -83,7 +103,7 @@ class AuthController {
 	 * @desc Обновление refresh токена
 	 * @access Public
 	 * */
-	async refresh(req: Request, res: Response, next: NextFunction) {
+	async refresh(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
 		try {
 			const { refreshToken } = req.cookies;
 			const userData: IUserData = await UserService.refresh(refreshToken);
@@ -99,7 +119,7 @@ class AuthController {
 		}
 	}
 
-	async getAll(req: Request, res: Response, next: NextFunction) {
+	async getAll(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
 		try {
 			const users: UserEntity[] = await UserService.getAll();
 
@@ -109,5 +129,3 @@ class AuthController {
 		}
 	}
 }
-
-export default new AuthController;

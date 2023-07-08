@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import express, { Express } from 'express';
 import { Server } from 'http';
 import dotenv from 'dotenv';
@@ -8,25 +9,26 @@ import path from 'path';
 import logger from 'morgan';
 
 import { storage } from './utils/multerConfig';
-import authRouter from './routes/authRoute';
 import uploadsRouter from './routes/uploadsRouter';
 import { ILogger } from './types/logger.interface';
 import { IExeptionFilter } from './types/exeptionFilter.interface';
 import { IUserController } from './types/userController.interface';
+import { inject, injectable } from 'inversify';
+import { TYPES } from './types';
+import { IAuthController } from './types/authController.interface';
 
+@injectable()
 export class App {
 	app: Express;
 	server: Server;
 	port: number | string;
 	uploadsPath: string;
-	logger: ILogger;
-	exeptionFilter: IExeptionFilter;
-	userController: IUserController;
 
 	constructor(
-		logger: ILogger,
-		exeptionFilter: IExeptionFilter,
-		userController: IUserController
+		@inject(TYPES.ILogger) private logger: ILogger,
+		@inject(TYPES.ExeptionFilter) private exeptionFilter: IExeptionFilter,
+		@inject(TYPES.AuthController) private authController: IAuthController,
+		@inject(TYPES.UserController) private userController: IUserController
 	) {
 		/**
 		 * Load environment variables from .env file,
@@ -37,9 +39,6 @@ export class App {
 		this.app = express();
 		this.port = process.env.PORT || 4000;
 		this.uploadsPath = path.join(__dirname, '../uploads');
-		this.logger = logger;
-		this.exeptionFilter = exeptionFilter;
-		this.userController = userController;
 	}
 
 	/**
@@ -58,7 +57,7 @@ export class App {
 		this.app.use(multer({ storage }).single('fileData'));
 	}
 
-	useExeptionFilters() {
+	useExeptionFilters(): void {
 		this.app.use(this.exeptionFilter.catch.bind(this.exeptionFilter));
 	}
 
@@ -66,9 +65,9 @@ export class App {
 	 * Routing.
 	 * */
 	useRoutes(): void {
-		this.app.use('/auth', authRouter);
 		this.app.use('/upload', uploadsRouter);
-		this.app.use('/user', this.userController.router);
+		this.app.use('/auth', this.authController.router);
+		//this.app.use('/user', this.userController.router);
 	}
 
 	/**
