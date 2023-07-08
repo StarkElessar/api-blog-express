@@ -1,7 +1,10 @@
+import 'reflect-metadata';
 import { Logger } from 'tslog';
 import * as fs from 'fs';
 import { ILogger } from '../types/logger.interface';
+import { injectable } from 'inversify';
 
+@injectable()
 export class LoggerService implements ILogger {
 	public logger: Logger<Logger<any>>;
 	private readonly logFilePath: string;
@@ -16,16 +19,16 @@ export class LoggerService implements ILogger {
 		this.logFilePath = logFilePath;
 	}
 
-	async log(...args: unknown[]): Promise<void> {
-		await this.logToFile('info', args);
+	log(...args: unknown[]): void {
+		this.logToFile('info', args);
 	}
 
-	async error(...args: unknown[]): Promise<void> {
-		await this.logToFile('error', args);
+	error(...args: unknown[]): void {
+		this.logToFile('error', args);
 	}
 
-	async warn(...args: unknown[]): Promise<void> {
-		await this.logToFile('warn', args);
+	warn(...args: unknown[]): void {
+		this.logToFile('warn', args);
 	}
 
 	private async logToFile(level: 'info' | 'error' | 'warn', args: unknown[]): Promise<void> {
