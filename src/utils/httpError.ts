@@ -1,4 +1,5 @@
 import { ValidationError } from 'express-validator';
+
 import { IHttpError } from '../types/httpError.interface';
 
 export class HttpError extends Error implements IHttpError {
@@ -15,19 +16,19 @@ export class HttpError extends Error implements IHttpError {
 		this.context = context;
 	}
 
-	static badRequest(message: string, errors: ValidationError[] = []): HttpError {
+	public static badRequest(message: string, errors: ValidationError[] = []): HttpError {
 		return new HttpError(400, message, errors);
 	};
 
-	static unAuthorizedError(context: string): HttpError {
+	public static unAuthorizedError(context: string): HttpError {
 		return new HttpError(401, 'Ошибка авторизации', [], context);
 	};
 
-	static noAccess(): HttpError {
+	public static noAccess(): HttpError {
 		return new HttpError(403, 'Нет доступа');
 	};
 
-	static internal(message: string): HttpError {
+	public static internal(message: string): HttpError {
 		return new HttpError(500, message);
 	};
 }

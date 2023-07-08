@@ -1,8 +1,9 @@
 import 'reflect-metadata';
+import { injectable } from 'inversify';
 import { Logger } from 'tslog';
 import * as fs from 'fs';
+
 import { ILogger } from '../types/logger.interface';
-import { injectable } from 'inversify';
 
 @injectable()
 export class LoggerService implements ILogger {
@@ -32,8 +33,8 @@ export class LoggerService implements ILogger {
 	}
 
 	private async logToFile(level: 'info' | 'error' | 'warn', args: unknown[]): Promise<void> {
-		const timestamp = new Date().toLocaleString();
-		const logMessage =  `[${timestamp}] [${level.toUpperCase()}] ${args.join(' ')}`;
+		const timestamp: string = new Date().toLocaleString();
+		const logMessage: string = `[${timestamp}] [${level.toUpperCase()}] ${args.join(' ')}`;
 
 		this.logger[level](...args);
 
