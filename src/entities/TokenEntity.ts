@@ -1,4 +1,4 @@
-import { BaseEntity } from './UserEntity';
+import { BaseEntity } from './BaseEntity';
 
 export interface ITokenEntity {
 	id: string,

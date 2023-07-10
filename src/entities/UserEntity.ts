@@ -1,6 +1,4 @@
-export class BaseEntity {
-    id: string;
-}
+import { BaseEntity } from './BaseEntity';
 
 export class UserEntity extends BaseEntity {
     email: string;

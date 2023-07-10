@@ -5,7 +5,7 @@ import { Request, Response, NextFunction } from 'express';
 import { TYPES } from '../types';
 import { IExeptionFilter } from '../types/exeptionFilter.interface';
 import { ILogger } from '../types/logger.interface';
-import { HttpError } from '../utils/httpError';
+import { HttpError } from '../utils/HttpError';
 
 @injectable()
 export class ExeptionFilter implements IExeptionFilter {

@@ -2,10 +2,10 @@ import 'reflect-metadata';
 import { inject, injectable } from 'inversify';
 import { Request, Response, NextFunction } from 'express';
 
-import { HttpError } from '../utils/httpError';
+import { HttpError } from '../utils/HttpError';
 import { TYPES } from '../types';
 import { ILogger } from '../types/logger.interface';
-import { BaseController } from './baseController';
+import { BaseController } from './BaseController';
 import { IUploadsController } from '../types/uploadsController.interface';
 
 @injectable()

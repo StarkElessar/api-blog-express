@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 import { prisma } from './prismaService';
 import { UserRegisterDto } from '../dtos/userRegister.dto';
 import { TokenEntity } from '../entities/TokenEntity';
-import { HttpError } from '../utils/httpError';
+import { HttpError } from '../utils/HttpError';
 
 export interface ITokenPairs {
 	accessToken: string;

@@ -2,8 +2,8 @@ import 'reflect-metadata';
 import { inject, injectable } from 'inversify';
 import { Request, NextFunction, Response } from 'express';
 
-import { BaseController } from './baseController';
-import { HttpError } from '../utils/httpError';
+import { BaseController } from './BaseController';
+import { HttpError } from '../utils/HttpError';
 import { ILogger } from '../types/logger.interface';
 import { IUserController } from '../types/userController.interface';
 import { TYPES } from '../types';

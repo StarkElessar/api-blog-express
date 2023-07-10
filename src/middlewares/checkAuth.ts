@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { HttpError } from '../utils/httpError';
-import TokenService from '../services/tokenService';
+import { HttpError } from '../utils/HttpError';
+import TokenService from '../services/TokenService';
 import { UserRegisterDto } from '../dtos/userRegister.dto';
 
 export default (req: Request, res: Response, next: NextFunction): void => {

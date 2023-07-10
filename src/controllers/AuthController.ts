@@ -2,11 +2,10 @@ import 'reflect-metadata';
 import { inject, injectable } from 'inversify';
 import { Request, Response, NextFunction } from 'express';
 
-import UserService from '../services/userService';
+import UserService from '../services/UserService';
 import { User } from '../services/prismaService';
-import { UserEntity } from '../entities/UserEntity';
 import { IUserData, IUserRegData } from '../types/user.interface';
-import { BaseController } from './baseController';
+import { BaseController } from './BaseController';
 import { ILogger } from '../types/logger.interface';
 import { TYPES } from '../types';
 import { IAuthController } from '../types/authController.interface';

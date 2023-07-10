@@ -4,7 +4,7 @@ import {
 	GroupedAlternativeValidationError, Result, UnknownFieldsError,
 	validationResult
 } from 'express-validator';
-import { HttpError } from '../utils/httpError';
+import { HttpError } from '../utils/HttpError';
 
 export default (req: Request, res: Response, next: NextFunction) => {
 	const errors: Result<AlternativeValidationError | GroupedAlternativeValidationError | UnknownFieldsError | FieldValidationError> = validationResult(req);

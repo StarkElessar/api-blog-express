@@ -2,9 +2,9 @@ import { v4 as uuid } from 'uuid';
 import bcrypt from 'bcrypt';
 
 import { prisma } from './prismaService';
-import MailService from './mailService';
-import TokenService, { ITokenPairs } from './tokenService';
-import { HttpError } from '../utils/httpError';
+import MailService from './MailService';
+import TokenService, { ITokenPairs } from './TokenService';
+import { HttpError } from '../utils/HttpError';
 import { UserRegisterDto } from '../dtos/userRegister.dto';
 import { UserEntity } from '../entities/UserEntity';
 import { ITokenEntity } from '../entities/TokenEntity';
