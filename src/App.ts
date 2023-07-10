@@ -9,7 +9,7 @@ import multer from 'multer';
 import path from 'path';
 import logger from 'morgan';
 
-import { storage } from './utils/multerConfig';
+import { MulterConfig } from './utils/MulterConfig';
 import { TYPES } from './types';
 import { ILogger } from './types/logger.interface';
 import { IExeptionFilter } from './types/exeptionFilter.interface';
@@ -27,6 +27,7 @@ export class App {
 	constructor(
 		@inject(TYPES.ILogger) private logger: ILogger,
 		@inject(TYPES.ExeptionFilter) private exeptionFilter: IExeptionFilter,
+		@inject(TYPES.MulterConfig) private multerConfig: MulterConfig,
 		@inject(TYPES.AuthController) private authController: IAuthController,
 		@inject(TYPES.UserController) private userController: IUserController,
 		@inject(TYPES.UploadsController) private uploadsController: IUploadsController
@@ -45,7 +46,7 @@ export class App {
 	/**
 	 * Express configuration.
 	 * */
-	useMiddlewares(): void {
+	public useMiddlewares(): void {
 		this.app.use(logger('dev'));
 		this.app.use(cookieParser())
 		this.app.use(cors({ credentials: true, origin: process.env.CLIENT_URL }))
@@ -55,17 +56,17 @@ export class App {
 		 * Путь к uploads: '/uploads'
 		 * */
 		this.app.use('/uploads', express.static(this.uploadsPath));
-		this.app.use(multer({ storage }).single('fileData'));
+		this.app.use(multer({ storage: this.multerConfig.storage }).single('fileData'));
 	}
 
-	useExeptionFilters(): void {
+	public useExeptionFilters(): void {
 		this.app.use(this.exeptionFilter.catch.bind(this.exeptionFilter));
 	}
 
 	/**
 	 * Routing.
 	 * */
-	useRoutes(): void {
+	public useRoutes(): void {
 		this.app.use('/api/upload', this.uploadsController.router);
 		this.app.use('/api/auth', this.authController.router);
 		//this.app.use('api/user', this.userController.router);
