@@ -27,7 +27,7 @@ export class AuthController extends BaseController implements IAuthController {
 		])
 	}
 	/**
-	 * @route POST /auth/register
+	 * @route POST api/auth/register
 	 * @desc Регистрация
 	 * @access Public
 	 */
@@ -47,7 +47,7 @@ export class AuthController extends BaseController implements IAuthController {
 	}
 
 	/**
-	 * @route POST /auth/login
+	 * @route POST api/auth/login
 	 * @desc Авторизация
 	 * @access Public
 	 */
@@ -67,7 +67,7 @@ export class AuthController extends BaseController implements IAuthController {
 	}
 
 	/**
-	 * @route POST /activate/:link
+	 * @route POST api/activate/:link
 	 * @desc Активация аккаунта
 	 * @access Public
 	 */
@@ -83,7 +83,7 @@ export class AuthController extends BaseController implements IAuthController {
 	}
 
 	/**
-	 * @route POST /logout
+	 * @route POST api/logout
 	 * @desc Выход из аккаунта
 	 * @access Public
 	 * */
@@ -101,7 +101,7 @@ export class AuthController extends BaseController implements IAuthController {
 	}
 
 	/**
-	 * @route POST /refresh
+	 * @route POST api/refresh
 	 * @desc Обновление refresh токена
 	 * @access Public
 	 * */

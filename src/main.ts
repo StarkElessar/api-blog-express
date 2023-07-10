@@ -7,7 +7,7 @@ import { IExeptionFilter } from './types/exeptionFilter.interface';
 import { ILogger } from './types/logger.interface';
 import { IUserController } from './types/userController.interface';
 import { IAuthController } from './types/authController.interface';
-import { LoggerService } from './utils/loggerService';
+import { LoggerService } from './services/loggerService';
 import { ExeptionFilter } from './middlewares/exeptionFilter';
 import { UserController } from './controllers/usersController';
 import { AuthController } from './controllers/authController';
