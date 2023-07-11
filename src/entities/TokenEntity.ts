@@ -7,6 +7,6 @@ export interface ITokenEntity {
 }
 
 export class TokenEntity extends BaseEntity {
-	refreshToken: string;
-	userId: string;
+	public refreshToken: string;
+	public userId: string;
 }

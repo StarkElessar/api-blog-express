@@ -3,13 +3,14 @@ import { inject, injectable } from 'inversify';
 import { Request, Response, NextFunction } from 'express';
 
 import UserService from '../services/UserService';
-import { User } from '../services/prismaService';
-import { IUserData, IUserRegData } from '../types/user.interface';
+import { IUserData } from '../types/user.interface';
 import { BaseController } from './BaseController';
 import { ILogger } from '../types/logger.interface';
 import { TYPES } from '../types';
 import { IAuthController } from '../types/authController.interface';
-import { UserLoginDto } from '../dtos/userLogin.dto';
+import { UserLoginDto } from '../dtos/UserLoginDto';
+import { ValidateMiddleware } from '../middlewares/ValidateMiddleware';
+import { UserRegisterDto } from '../dtos/UserRegisterDto';
 
 @injectable()
 export class AuthController extends BaseController implements IAuthController {
@@ -17,20 +18,25 @@ export class AuthController extends BaseController implements IAuthController {
 		super(loggerService);
 
 		this.bindRoutes([
-			{ path: '/register', method: 'post', func: this.register },
+			{
+				path: '/register',
+				method: 'post',
+				func: this.register,
+				middlewares: [ new ValidateMiddleware(UserRegisterDto) ]
+			},
 			{ path: '/login', method: 'post', func: this.login },
 			{ path: '/activate/:link', method: 'get', func: this.activate as any },
 			{ path: '/logout', method: 'get', func: this.logout },
 			{ path: '/refresh', method: 'get', func: this.refresh },
-			{ path: '/all', method: 'get', func: this.getAll },
-		])
+		]);
 	}
+
 	/**
 	 * @route POST api/auth/register
 	 * @desc Регистрация
 	 * @access Public
 	 */
-	public async register(req: Request<{}, {}, IUserRegData>, res: Response, next: NextFunction): Promise<Response | void> {
+	public async register(req: Request<{}, {}, UserRegisterDto>, res: Response, next: NextFunction): Promise<Response | void> {
 		try {
 			const userData: IUserData = await UserService.registration(req.body);
 
@@ -92,7 +98,6 @@ export class AuthController extends BaseController implements IAuthController {
 			await UserService.logout(refreshToken);
 
 			res.clearCookie('refreshToken');
-			/** TODO: Решить, что лучше вернуть если токен успешно удален */
 			return res.json({ message: 'Вы вышли из аккаунта' });
 		} catch (error) {
 			next(error);
@@ -115,16 +120,6 @@ export class AuthController extends BaseController implements IAuthController {
 			});
 
 			return res.status(201).json(userData);
-		} catch (error) {
-			next(error);
-		}
-	}
-
-	public async getAll(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
-		try {
-			const users: User[] = await UserService.getAll();
-
-			return res.json(users);
 		} catch (error) {
 			next(error);
 		}

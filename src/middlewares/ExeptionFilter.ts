@@ -14,7 +14,10 @@ export class ExeptionFilter implements IExeptionFilter {
 	async catch(err: Error | HttpError, req: Request, res: Response, next: NextFunction): Promise<Response | undefined> {
 		if (err instanceof HttpError) {
 			await this.logger.error(`[${err.context}] Ошибка ${err.statusCode}: ${err.message}`);
-			return res.status(err.statusCode).send({ err: err.message });
+			return res.status(err.statusCode).json({
+				message: err.message,
+				errors: err.errors
+			});
 		}
 
 		await this.logger.error(`${err.message}`);
