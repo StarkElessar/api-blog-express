@@ -1,9 +1,9 @@
-import { UserRegisterDto } from '../../dtos/userRegister.dto';
+import { UserForTokensDto } from '../../dtos/UserForTokensDto';
 
 declare global {
 	namespace Express {
 		interface Request {
-			user: UserRegisterDto;
+			user: UserForTokensDto;
 		}
 	}
 }

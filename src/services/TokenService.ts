@@ -1,16 +1,16 @@
 import jwt from 'jsonwebtoken';
 import { prisma } from './prismaService';
-import { UserRegisterDto } from '../dtos/userRegister.dto';
 import { TokenEntity } from '../entities/TokenEntity';
 import { HttpError } from '../utils/HttpError';
+import { UserForTokensDto } from '../dtos/UserForTokensDto';
 
-export interface ITokenPairs {
+export interface ITokenPair {
 	accessToken: string;
 	refreshToken: string;
 }
 
 class TokenService {
-	generateTokens(payload: UserRegisterDto): ITokenPairs {
+	generateTokens(payload: UserForTokensDto): ITokenPair {
 		const accessToken: string = jwt.sign(payload, process.env.JWT_ACCESS_SECRET as string, {
 			expiresIn: '30m',
 		});
@@ -25,17 +25,17 @@ class TokenService {
 		};
 	}
 
-	validateAccessToken(token: string): UserRegisterDto | null {
+	validateAccessToken(token: string): UserForTokensDto | null {
 		try {
-			return jwt.verify(token, process.env.JWT_ACCESS_SECRET as string) as UserRegisterDto;
+			return jwt.verify(token, process.env.JWT_ACCESS_SECRET as string) as UserForTokensDto;
 		} catch (error) {
 			return null;
 		}
 	}
 
-	validateRefreshToken(token: string): UserRegisterDto | null {
+	validateRefreshToken(token: string): UserForTokensDto | null {
 		try {
-			return jwt.verify(token, process.env.JWT_REFRESH_SECRET as string) as UserRegisterDto;
+			return jwt.verify(token, process.env.JWT_REFRESH_SECRET as string) as UserForTokensDto;
 		} catch (error) {
 			return null;
 		}

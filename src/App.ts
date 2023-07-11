@@ -69,7 +69,7 @@ export class App {
 	public useRoutes(): void {
 		this.app.use('/api/upload', this.uploadsController.router);
 		this.app.use('/api/auth', this.authController.router);
-		//this.app.use('api/user', this.userController.router);
+		this.app.use('/api/user', this.userController.router);
 	}
 
 	/**

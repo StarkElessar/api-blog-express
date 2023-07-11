@@ -1,7 +1,5 @@
-import { ValidationError } from 'express-validator';
-
 export interface IHttpError {
 	statusCode: number;
-	errors: ValidationError[];
+	errors: unknown[];
 	context?: string;
 }

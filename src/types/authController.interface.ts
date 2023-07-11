@@ -7,5 +7,4 @@ export interface IAuthController extends IBaseController {
 	activate: (req: Request<{link: string}, {}, {}>, res: Response, next: NextFunction) => Promise<void>;
 	logout: (req: Request, res: Response, next: NextFunction) => Promise<Response | void>;
 	refresh: (req: Request, res: Response, next: NextFunction) => Promise<Response | void>;
-	getAll: (req: Request, res: Response, next: NextFunction) => Promise<Response | void>;
 }

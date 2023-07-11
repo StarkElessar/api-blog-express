@@ -1,13 +1,11 @@
-import { ValidationError } from 'express-validator';
-
 import { IHttpError } from '../types/httpError.interface';
 
 export class HttpError extends Error implements IHttpError {
-	statusCode: number;
-	errors: ValidationError[];
-	context?: string;
+	public statusCode: number;
+	public errors: unknown[];
+	public context?: string;
 
-	constructor(statusCode: number, message: string, errors: ValidationError[] = [], context?: string) {
+	constructor(statusCode: number, message: string, errors: unknown[] = [], context?: string) {
 		super(message);
 
 		this.statusCode = statusCode;
@@ -16,7 +14,7 @@ export class HttpError extends Error implements IHttpError {
 		this.context = context;
 	}
 
-	public static badRequest(message: string, errors: ValidationError[] = []): HttpError {
+	public static badRequest(message: string, errors: unknown[] = []): HttpError {
 		return new HttpError(400, message, errors);
 	};
 
@@ -26,6 +24,14 @@ export class HttpError extends Error implements IHttpError {
 
 	public static noAccess(): HttpError {
 		return new HttpError(403, 'Нет доступа');
+	};
+
+	public static unprocessableEntity(
+		errors: unknown[] = [],
+		message: string = 'Ошибка при валидации',
+		context: string
+	): HttpError {
+		return new HttpError(422, message, errors, context);
 	};
 
 	public static internal(message: string): HttpError {

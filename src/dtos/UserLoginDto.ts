@@ -4,7 +4,7 @@ export class UserLoginDto {
 	public email: string;
 	public password: string;
 
-	constructor(model: User) {
+	constructor(model: User = <User>{}) {
 		this.email = model.email;
 		this.password = model.password;
 	}
