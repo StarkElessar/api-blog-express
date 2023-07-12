@@ -1,5 +1,5 @@
-import { User } from '../services/prismaService';
 import { IsEmail, MinLength } from 'class-validator';
+import { User } from '@prisma/client';
 
 export class UserRegisterDto {
 	@IsEmail({}, { message: 'Не верный формат почты' })

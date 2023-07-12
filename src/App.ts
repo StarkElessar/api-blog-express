@@ -16,6 +16,8 @@ import { IExeptionFilter } from './types/exeptionFilter.interface';
 import { IUserController } from './types/userController.interface';
 import { IAuthController } from './types/authController.interface';
 import { IUploadsController } from './types/uploadsController.interface';
+import { IConfigService } from './types/configService.interface';
+import { PrismaService } from './services/PrismaService';
 
 @injectable()
 export class App {
@@ -30,7 +32,9 @@ export class App {
 		@inject(TYPES.MulterConfig) private multerConfig: MulterConfig,
 		@inject(TYPES.AuthController) private authController: IAuthController,
 		@inject(TYPES.UserController) private userController: IUserController,
-		@inject(TYPES.UploadsController) private uploadsController: IUploadsController
+		@inject(TYPES.UploadsController) private uploadsController: IUploadsController,
+		@inject(TYPES.ConfigService) private configService: IConfigService,
+		@inject(TYPES.PrismaService) private prismaService: PrismaService,
 	) {
 		/**
 		 * Load environment variables from .env file,
@@ -79,6 +83,8 @@ export class App {
 		this.useMiddlewares();
 		this.useRoutes();
 		this.useExeptionFilters();
+
+		await this.prismaService.connect();
 
 		this.server = this.app.listen(this.port);
 		this.logger.log(`Сервер запущен на http://localhost:${this.port}`);

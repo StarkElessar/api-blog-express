@@ -11,7 +11,7 @@
     "generate": "npx prisma generate",
     "bd": "npx prisma studio"
   },
-  "keywords": [],
+  "keywords": ["typescript", "express", "prisma", "sqlite"],
   "author": "<serj.elessar@gmail.com> Sergei Chevdar",
   "license": "ISC",
   "devDependencies": {
