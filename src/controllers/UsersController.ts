@@ -9,17 +9,25 @@ import { IUserController } from '../types/userController.interface';
 import { TYPES } from '../types';
 import { IUserService } from '../types/userService.interface';
 import { HttpError } from '../utils/HttpError';
+import { IConfigService } from '../types/configService.interface';
+import { AuthGuard } from '../middlewares/AuthGuard';
 
 @injectable()
 export class UserController extends BaseController implements IUserController {
 	constructor(
 		@inject(TYPES.ILogger) private loggerService: ILogger,
-		@inject(TYPES.UserService) private userService: IUserService
+		@inject(TYPES.UserService) private userService: IUserService,
+		@inject(TYPES.ConfigService) private configService: IConfigService,
 	) {
 		super(loggerService);
 
 		this.bindRoutes([
-			{ path: '/all', method: 'get', func: this.getAll },
+			{
+				path: '/all',
+				method: 'get',
+				func: this.getAll,
+				middlewares: [ new AuthGuard() ]
+			},
 		])
 	}
 
