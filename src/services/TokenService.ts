@@ -1,23 +1,39 @@
-import jwt from 'jsonwebtoken';
-import { prisma } from './prismaService';
-import { TokenEntity } from '../entities/TokenEntity';
+import 'reflect-metadata';
+import { inject, injectable } from 'inversify';
+import { sign, verify } from 'jsonwebtoken';
+import { Token } from '@prisma/client';
+
 import { HttpError } from '../utils/HttpError';
 import { UserForTokensDto } from '../dtos/UserForTokensDto';
+import { ITokenService } from '../types/tokenService.interface';
+import { TYPES } from '../types';
+import { IConfigService } from '../types/configService.interface';
+import { TokensRepository } from '../repositories/TokensRepository';
+import { ITokenPair } from '../types/tokenPair';
 
-export interface ITokenPair {
-	accessToken: string;
-	refreshToken: string;
-}
 
-class TokenService {
-	generateTokens(payload: UserForTokensDto): ITokenPair {
-		const accessToken: string = jwt.sign(payload, process.env.JWT_ACCESS_SECRET as string, {
-			expiresIn: '30m',
+@injectable()
+export class TokenService implements ITokenService {
+	constructor(
+		@inject(TYPES.ConfigService) private configService: IConfigService,
+		@inject(TYPES.TokensRepository) private tokensRepository: TokensRepository,
+		) {}
+
+	private signJWT(payload: UserForTokensDto, secret: string, expires: string | number): Promise<string> {
+		return new Promise((resolve, reject): void => {
+			sign({ ...payload }, secret, { algorithm: 'HS256', expiresIn: expires }, (err, token) => {
+				if (err) {
+					reject(err);
+				}
+
+				resolve(<string>token);
+			});
 		});
+	}
 
-		const refreshToken: string = jwt.sign(payload, process.env.JWT_REFRESH_SECRET as string, {
-			expiresIn: '30d',
-		});
+	public async generateTokens(payload: UserForTokensDto): Promise<ITokenPair> {
+		const accessToken: string = await this.signJWT(payload, this.configService.get('JWT_ACCESS'), '30m');
+		const refreshToken: string = await this.signJWT(payload, this.configService.get('JWT_REFRESH'), '30d');
 
 		return {
 			accessToken,
@@ -25,42 +41,40 @@ class TokenService {
 		};
 	}
 
-	validateAccessToken(token: string): UserForTokensDto | null {
-		try {
-			return jwt.verify(token, process.env.JWT_ACCESS_SECRET as string) as UserForTokensDto;
-		} catch (error) {
-			return null;
-		}
+	public validateAccessToken(token: string): UserForTokensDto | null {
+		return <UserForTokensDto>verify(token, this.configService.get('JWT_ACCESS'));
 	}
 
-	validateRefreshToken(token: string): UserForTokensDto | null {
-		try {
-			return jwt.verify(token, process.env.JWT_REFRESH_SECRET as string) as UserForTokensDto;
-		} catch (error) {
-			return null;
-		}
+	public validateRefreshToken(token: string): UserForTokensDto | null {
+		return <UserForTokensDto>verify(token, this.configService.get('JWT_REFRESH'));
 	}
 
-	async saveToken(userId: string, refreshToken: string) {
-		const tokenData: TokenEntity | null = await prisma.token.findFirst({ where: { userId } });
+	public async saveToken(userId: string, refreshToken: string): Promise<Token | null> {
+		const tokenData: Token | null = await this.tokensRepository.findByUserId(userId);
 
 		if (tokenData) {
-			return prisma.token.update({
-				where: { id: tokenData.id },
-				data: { refreshToken },
-			});
+			return this.tokensRepository.update(tokenData.id, refreshToken);
 		}
 
-		return prisma.token.create({ data: { userId, refreshToken } });
+		return this.tokensRepository.create(userId, refreshToken);
 	}
 
-	async removeToken(refreshToken: string) {
-		const data: TokenEntity | null = await prisma.token.findFirst(refreshToken as any);
-		return prisma.token.delete({ where: { id: data?.id } });
+	async removeToken(refreshToken: string): Promise<Token> {
+		if (!refreshToken) {
+			throw HttpError.unAuthorizedError('logout');
+		}
+
+		const data: Token | null = await this.tokensRepository.findByToken(refreshToken);
+
+		if (!data) {
+			throw HttpError.badRequest('Токен не найден');
+		}
+
+		return this.tokensRepository.delete(data.id);
 	}
 
-	async findToken(refreshToken: string): Promise<TokenEntity> {
-		const tokenData: TokenEntity | null = await prisma.token.findFirst({ where: { refreshToken } });
+	async findToken(refreshToken: string): Promise<Token> {
+		const tokenData: Token | null = await this.tokensRepository.findByToken(refreshToken);
 
 		if (!tokenData) {
 			throw HttpError.badRequest('Токен не найден');
@@ -69,5 +83,3 @@ class TokenService {
 		return tokenData;
 	}
 }
-
-export default new TokenService();

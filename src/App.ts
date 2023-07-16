@@ -16,6 +16,9 @@ import { IExeptionFilter } from './types/exeptionFilter.interface';
 import { IUserController } from './types/userController.interface';
 import { IAuthController } from './types/authController.interface';
 import { IUploadsController } from './types/uploadsController.interface';
+import { IConfigService } from './types/configService.interface';
+import { PrismaService } from './services/PrismaService';
+import { AuthMiddleware } from './middlewares/AuthMiddleware';
 
 @injectable()
 export class App {
@@ -30,7 +33,9 @@ export class App {
 		@inject(TYPES.MulterConfig) private multerConfig: MulterConfig,
 		@inject(TYPES.AuthController) private authController: IAuthController,
 		@inject(TYPES.UserController) private userController: IUserController,
-		@inject(TYPES.UploadsController) private uploadsController: IUploadsController
+		@inject(TYPES.UploadsController) private uploadsController: IUploadsController,
+		@inject(TYPES.ConfigService) private configService: IConfigService,
+		@inject(TYPES.PrismaService) private prismaService: PrismaService,
 	) {
 		/**
 		 * Load environment variables from .env file,
@@ -52,15 +57,14 @@ export class App {
 		this.app.use(cors({ credentials: true, origin: process.env.CLIENT_URL }))
 		this.app.use(express.json());
 
+		const authMiddleware = new AuthMiddleware(this.configService.get('JWT_ACCESS'));
+		this.app.use(authMiddleware.execute.bind(authMiddleware));
+
 		/**
 		 * Путь к uploads: '/uploads'
 		 * */
 		this.app.use('/uploads', express.static(this.uploadsPath));
 		this.app.use(multer({ storage: this.multerConfig.storage }).single('fileData'));
-	}
-
-	public useExeptionFilters(): void {
-		this.app.use(this.exeptionFilter.catch.bind(this.exeptionFilter));
 	}
 
 	/**
@@ -72,6 +76,10 @@ export class App {
 		this.app.use('/api/user', this.userController.router);
 	}
 
+	public useExeptionFilters(): void {
+		this.app.use(this.exeptionFilter.catch.bind(this.exeptionFilter));
+	}
+
 	/**
 	 * Start Express server.
 	 * */
@@ -79,6 +87,8 @@ export class App {
 		this.useMiddlewares();
 		this.useRoutes();
 		this.useExeptionFilters();
+
+		await this.prismaService.connect();
 
 		this.server = this.app.listen(this.port);
 		this.logger.log(`Сервер запущен на http://localhost:${this.port}`);

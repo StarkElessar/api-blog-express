@@ -1,4 +1,4 @@
-import { User } from '../services/prismaService';
+import { User } from '@prisma/client';
 
 export class UserForTokensDto {
 	public id: string;

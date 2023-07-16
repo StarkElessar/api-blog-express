@@ -1,119 +1,103 @@
-import { v4 as uuid } from 'uuid';
-import bcrypt from 'bcrypt';
+import 'reflect-metadata';
+import { inject, injectable } from 'inversify';
+import { Token, User } from '@prisma/client';
 
-import { prisma } from './prismaService';
-import MailService from './MailService';
-import TokenService, { ITokenPair } from './TokenService';
 import { HttpError } from '../utils/HttpError';
-import { UserEntity } from '../entities/UserEntity';
-import { ITokenEntity } from '../entities/TokenEntity';
-import { IUserData } from '../types/user.interface';
 import { UserForTokensDto } from '../dtos/UserForTokensDto';
-import { User } from '@prisma/client';
 import { UserRegisterDto } from '../dtos/UserRegisterDto';
 import { UserLoginDto } from '../dtos/UserLoginDto';
+import { UserEntity } from '../entities/UserEntity';
+import { IUserService } from '../types/userService.interface';
+import { TYPES } from '../types';
+import { IConfigService } from '../types/configService.interface';
+import { IUsersRepository } from '../types/usersRrepository.interface';
+import { ITokenService } from '../types/tokenService.interface';
+import { ITokensRepository } from '../types/tokensRepository.interface';
+import { ITokenPair } from '../types/tokenPair';
+import { IUserData } from '../types/user.interface';
 
-class UserService {
-	async registration({ email, password, role = 'user' }: UserRegisterDto): Promise<IUserData> {
-		const candidate: UserEntity | null = await prisma.user.findFirst({ where: { email } });
-
-		if (candidate) {
-			throw HttpError.unprocessableEntity(
-				[],
-				`Пользователь с таким почтовым адресом ${email} уже существует`,
-				'register'
-			);
-		}
-
-		const hashPassword: string = await bcrypt.hash(password, 10);
-		const activationLink: string = uuid();
-		const user: User = await prisma.user.create({
-			data: {
-				email,
-				password: hashPassword,
-				activationLink,
-				role
-			}
-		});
-
-		await MailService.sendActivationMail(email, `${process.env.API_URL}/api/activate/${activationLink}`);
-
-		const userDto: UserForTokensDto = new UserForTokensDto(user);
-		const tokens: ITokenPair = TokenService.generateTokens({ ...userDto });
-		await TokenService.saveToken(userDto.id, tokens.refreshToken);
-
-		return { ...tokens, user: userDto };
+@injectable()
+export class UserService implements IUserService {
+	constructor(
+		@inject(TYPES.TokenService) private tokenService: ITokenService,
+		@inject(TYPES.ConfigService) private configService: IConfigService,
+		@inject(TYPES.UsersRepository) private usersRepository: IUsersRepository,
+		@inject(TYPES.TokensRepository) private tokensRepository: ITokensRepository,
+	) {
 	}
 
-	async login({ email, password }: UserLoginDto): Promise<IUserData> {
-		const user: UserEntity | null = await prisma.user.findFirst({ where: { email } });
-		if (!user) {
+	public async createUser({ email, password, role = 'user' }: UserRegisterDto): Promise<User | null> {
+		const existedUser = await this.usersRepository.findOneByEmail(email);
+
+		if (existedUser) {
+			return null;
+		}
+
+		const newUser: UserEntity = new UserEntity(email, role);
+		const salt: string = this.configService.get('SALT');
+		await newUser.setPassword(password, Number(salt));
+
+		/** TODO: Проверка, что он есть? Если есть - возвращаем null иначе создаём */
+		return this.usersRepository.create(newUser);
+	}
+
+	public async validateUser({ email, password }: UserLoginDto): Promise<UserForTokensDto | null> {
+		const existedUser: User | null = await this.usersRepository.findOneByEmail(email);
+
+		if (!existedUser) {
 			throw HttpError.badRequest('Пользователь с таким email не найден');
 		}
 
-		const isPasswordEquals: boolean = await bcrypt.compare(password, user.password);
+		const newUser: UserEntity = new UserEntity(existedUser.email, existedUser.role, existedUser.password);
+		const isPasswordEquals: boolean = await newUser.comparePassword(password);
+
 		if (!isPasswordEquals) {
 			throw HttpError.badRequest('Неверный пароль');
 		}
 
-		const userDto: UserForTokensDto = new UserForTokensDto(user);
-		const tokens: ITokenPair = TokenService.generateTokens({ ...userDto });
-
-		await TokenService.saveToken(userDto.id, tokens.refreshToken);
-
-		return { ...tokens, user: userDto };
+		return new UserForTokensDto(existedUser);
 	}
 
-	async activate(activationLink: string): Promise<UserEntity> {
-		const user: UserEntity | null = await prisma.user.findFirst({ where: { activationLink } });
+	public async activate(activationLink: string): Promise<User | null> {
+		const user: User | null = await this.usersRepository.findOneByActivatedLink(activationLink);
 
 		if (!user) {
 			throw HttpError.badRequest('Некорректная ссылка активации');
 		}
 
-		return prisma.user.update({
-			where: { id: user.id },
-			data: { isActivated: true },
-		});
-	}
-
-	async logout(refreshToken: string) {
-		if (!refreshToken) {
-			throw HttpError.unAuthorizedError('logout');
+		if (user.isActivated) {
+			throw HttpError.badRequest('Аккаунт уже был активирован');
 		}
 
-		return TokenService.removeToken(refreshToken);
+		return this.usersRepository.updateUserByLink(user.id);
 	}
 
-	async refresh(refreshToken: string): Promise<IUserData> {
+	public async refresh(refreshToken: string): Promise<IUserData> {
 		if (!refreshToken) {
 			throw HttpError.unAuthorizedError('refresh');
 		}
 
-		const userData: UserForTokensDto | null = TokenService.validateRefreshToken(refreshToken);
-		const tokenFromDB: ITokenEntity = await TokenService.findToken(refreshToken);
+		const userData: UserForTokensDto | null = await this.tokenService.validateRefreshToken(refreshToken);
+		const tokenFromDB: Token | null = await this.tokensRepository.findByToken(refreshToken);
 
 		if (!userData || !tokenFromDB) {
 			throw HttpError.unAuthorizedError('refresh');
 		}
 
-		const user: UserEntity | null = await prisma.user.findFirst({ where: { id: userData.id } });
+		const user: User | null = await this.usersRepository.findOneByEmail(userData.email);
 
 		if (!user) {
 			throw HttpError.badRequest('Пользователь не найден');
 		}
 
 		const userDto: UserForTokensDto = new UserForTokensDto(user);
-		const tokens: ITokenPair = TokenService.generateTokens({ ...userDto });
-
-		await TokenService.saveToken(userDto.id as string, tokens.refreshToken);
+		const tokens: ITokenPair = await this.tokenService.generateTokens(userDto);
+		await this.tokenService.saveToken(userDto.id, tokens.refreshToken);
 
 		return { ...tokens, user: userDto };
 	}
 
-	async getAll(): Promise<UserEntity[]> {
-		return prisma.user.findMany();
+	public async getAll(): Promise<User[] | null> {
+		return this.usersRepository.findAll();
 	}
 }
-
-export default new UserService();
