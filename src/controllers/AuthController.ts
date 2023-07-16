@@ -13,6 +13,12 @@ import { IUserService } from '../types/userService.interface';
 import { HttpError } from '../utils/HttpError';
 import { ITokenService } from '../types/tokenService.interface';
 import { IConfigService } from '../types/configService.interface';
+import { ITokenPair } from '../types/tokenPair';
+import { User } from '@prisma/client';
+import { UserForTokensDto } from '../dtos/UserForTokensDto';
+import { IMailService } from '../types/mailService.interface';
+import { ICookieService } from '../types/cookieService.interface';
+import { IUserData } from '../types/user.interface';
 
 @injectable()
 export class AuthController extends BaseController implements IAuthController {
@@ -21,6 +27,8 @@ export class AuthController extends BaseController implements IAuthController {
 		@inject(TYPES.UserService) private userService: IUserService,
 		@inject(TYPES.TokenService) private tokenService: ITokenService,
 		@inject(TYPES.ConfigService) private configService: IConfigService,
+		@inject(TYPES.MailService) private mailService: IMailService,
+		@inject(TYPES.CookieService) private cookieService: ICookieService,
 	) {
 		super(loggerService);
 
@@ -32,125 +40,108 @@ export class AuthController extends BaseController implements IAuthController {
 				middlewares: [ new ValidateMiddleware(UserRegisterDto) ]
 			},
 			{ path: '/login', method: 'post', func: this.login },
-			// { path: '/activate/:link', method: 'get', func: this.activate as any },
-			// { path: '/logout', method: 'get', func: this.logout },
-			// { path: '/refresh', method: 'get', func: this.refresh },
+			{ path: '/activate/:link', method: 'get', func: this.activate as any },
+			{ path: '/logout', method: 'get', func: this.logout },
+			{ path: '/refresh', method: 'get', func: this.refresh },
 		]);
 	}
 
-	async register({ body }: Request<{}, {}, UserRegisterDto>, res: Response, next: NextFunction): Promise<void> {
-		const result = await this.userService.createUser(body);
+	/**
+	 * @route POST api/auth/register
+	 * @desc Регистрация
+	 * @access Public
+	 */
+	public async register({ body }: Request<{}, {}, UserRegisterDto>, res: Response, next: NextFunction): Promise<void> {
+		try {
+			const candidate: User | null = await this.userService.createUser(body);
 
-		if (!result) {
-			return next(HttpError.unprocessableEntity([], 'Такой пользователь уже существует', 'register'));
+			if (!candidate) {
+				return next(HttpError.unprocessableEntity([], 'Такой пользователь уже существует', 'register'));
+			}
+
+			const userData: UserForTokensDto = new UserForTokensDto(candidate);
+			const tokens: ITokenPair = await this.tokenService.generateTokens(userData);
+
+			await this.tokenService.saveToken(candidate.id, tokens.refreshToken);
+			await this.mailService.sendActivationMail(candidate.email, <string>candidate.activationLink);
+			this.cookieService.save(res, 'refreshToken', tokens.refreshToken);
+
+			this.ok(res, { user: userData, ...tokens });
+		} catch (error) {
+			next(error);
 		}
-
-		this.ok(res, { email: result.email, id: result.id });
 	}
 
-	async login({ body }: Request<{}, {}, UserLoginDto>, res: Response, next: NextFunction): Promise<void> {
-		const result: boolean = await this.userService.validateUser(body);
+	/**
+	 * @route POST api/auth/login
+	 * @desc Авторизация
+	 * @access Public
+	 */
+	public async login({ body }: Request<{}, {}, UserLoginDto>, res: Response, next: NextFunction): Promise<void> {
+		try {
+			const candidate: UserForTokensDto | null = await this.userService.validateUser(body);
 
-		if (!result) {
-			return next(HttpError.unAuthorizedError('login'));
+			if (!candidate) {
+				return next(HttpError.unAuthorizedError('login'));
+			}
+
+			const tokens: ITokenPair = await this.tokenService.generateTokens(candidate);
+			await this.tokenService.saveToken(candidate.id, tokens.refreshToken);
+			this.cookieService.save(res, 'refreshToken', tokens.refreshToken);
+
+			this.ok(res, { user: candidate, ...tokens });
+		} catch (error) {
+			next(error);
 		}
-
-		const token: string = await this.tokenService.signJWT(body.email, this.configService.get('JWT_ACCESS_SECRET'));
-
-		this.ok(res, { token });
 	}
 
-	// /**
-	//  * @route POST api/auth/register
-	//  * @desc Регистрация
-	//  * @access Public
-	//  */
-	// public async register(req: Request<{}, {}, UserRegisterDto>, res: Response, next: NextFunction): Promise<Response | void> {
-	// 	try {
-	// 		const userData: IUserData = await this.userService.registration(req.body);
-	//
-	// 		res.cookie('refreshToken', userData.refreshToken, {
-	// 			maxAge: 30 * 24 * 60 * 60 * 1000,
-	// 			httpOnly: true,
-	// 		});
-	//
-	// 		return res.status(201).json(userData);
-	// 	} catch (error) {
-	// 		next(error);
-	// 	}
-	// }
-	//
-	// /**
-	//  * @route POST api/auth/login
-	//  * @desc Авторизация
-	//  * @access Public
-	//  */
-	// public async login(req: Request<{}, {}, UserLoginDto>, res: Response, next: NextFunction): Promise<Response | void> {
-	// 	try {
-	// 		const userData: IUserData = await this.userService.login(req.body);
-	//
-	// 		res.cookie('refreshToken', userData.refreshToken, {
-	// 			maxAge: 30 * 24 * 60 * 60 * 1000,
-	// 			httpOnly: true,
-	// 		});
-	//
-	// 		return res.status(201).json(userData);
-	// 	} catch (error) {
-	// 		next(error);
-	// 	}
-	// }
-	//
-	// /**
-	//  * @route POST api/activate/:link
-	//  * @desc Активация аккаунта
-	//  * @access Public
-	//  */
-	// public async activate(req: Request<{ link: string }>, res: Response, next: NextFunction): Promise<void> {
-	// 	try {
-	// 		const activationLink: string = req.params.link;
-	// 		await UserService.activate(activationLink);
-	//
-	// 		return res.redirect(process.env.CLIENT_URL as string);
-	// 	} catch (error) {
-	// 		next(error);
-	// 	}
-	// }
-	//
-	// /**
-	//  * @route POST api/logout
-	//  * @desc Выход из аккаунта
-	//  * @access Public
-	//  * */
-	// public async logout(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
-	// 	try {
-	// 		const { refreshToken } = req.cookies;
-	// 		await UserService.logout(refreshToken);
-	//
-	// 		res.clearCookie('refreshToken');
-	// 		return res.json({ message: 'Вы вышли из аккаунта' });
-	// 	} catch (error) {
-	// 		next(error);
-	// 	}
-	// }
-	//
-	// /**
-	//  * @route POST api/refresh
-	//  * @desc Обновление refresh токена
-	//  * @access Public
-	//  * */
-	// public async refresh(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
-	// 	try {
-	// 		const { refreshToken } = req.cookies;
-	// 		const userData: IUserData = await UserService.refresh(refreshToken);
-	//
-	// 		res.cookie('refreshToken', userData.refreshToken, {
-	// 			maxAge: 30 * 24 * 60 * 60 * 1000,
-	// 			httpOnly: true,
-	// 		});
-	//
-	// 		return res.status(201).json(userData);
-	// 	} catch (error) {
-	// 		next(error);
-	// 	}
-	// }
+	/**
+	 * @route GET api/auth/activate/:link
+	 * @desc Активация аккаунта
+	 * @access Public
+	 */
+	public async activate(req: Request<{ link: string }>, res: Response, next: NextFunction): Promise<void> {
+		try {
+			const activationLink: string = req.params.link;
+			await this.userService.activate(activationLink);
+
+			return res.redirect(this.configService.get('CLIENT_URL'));
+		} catch (error) {
+			next(error);
+		}
+	}
+
+	/**
+	 * @route GET api/auth/logout
+	 * @desc Выход из аккаунта
+	 * @access Public
+	 * */
+	public async logout(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
+		try {
+			const { refreshToken } = req.cookies;
+			await this.tokenService.removeToken(refreshToken);
+			this.cookieService.delete(res, 'refreshToken');
+
+			return res.json({ message: 'Вы вышли из аккаунта' });
+		} catch (error) {
+			next(error);
+		}
+	}
+
+	/**
+	 * @route GET api/auth/refresh
+	 * @desc Обновление refresh токена
+	 * @access Public
+	 * */
+	public async refresh(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
+		try {
+			const { refreshToken } = req.cookies;
+			const userData: IUserData = await this.userService.refresh(refreshToken);
+			this.cookieService.save(res, 'refreshToken', userData.refreshToken);
+
+			return res.status(201).json(userData);
+		} catch (error) {
+			next(error);
+		}
+	}
 }
