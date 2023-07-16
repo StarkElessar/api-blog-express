@@ -1,15 +1,22 @@
+import 'reflect-metadata';
+import { inject, injectable } from 'inversify';
 import nodemailer, { Transporter } from 'nodemailer';
 import SMTPTransport from 'nodemailer/lib/smtp-transport';
 
-class MailService {
-	transporter: Transporter<SMTPTransport.SentMessageInfo>;
+import { TYPES } from '../types';
+import { IConfigService } from '../types/configService.interface';
+import { IMailService } from '../types/mailService.interface';
 
-	constructor() {
+@injectable()
+export class MailService implements IMailService {
+	private transporter: Transporter<SMTPTransport.SentMessageInfo>;
+
+	constructor(@inject(TYPES.ConfigService) private configService: IConfigService) {
 		this.transporter = nodemailer.createTransport({
-			service: process.env.SMTP_SERVICE, // указываем сервис, который будет отправлять письмо
+			service: this.configService.get('SMTP_SERVICE'), // указываем сервис, который будет отправлять письмо
 			auth: {
-				user: process.env.SMTP_USER, // адрес почты, с которой будет отправляться письмо
-				pass: process.env.SMTP_PASSWORD, // сгенерированный пароль, после подключения 2-х этапной аутен-ции
+				user: this.configService.get('SMTP_USER'), // адрес почты, с которой будет отправляться письмо
+				pass: this.configService.get('SMTP_PASSWORD'), // сгенерированный пароль, после подключения 2-х этапной аутен-ции
 			},
 		});
 	}
@@ -17,20 +24,22 @@ class MailService {
 	/**
 	 * Метод для отправки письма с активацией:
 	 * */
-	async sendActivationMail(email: string, link: string): Promise<void> {
+	public async sendActivationMail(email: string, link: string): Promise<void> {
+		const apiUrl = this.configService.get('API_URL');
 		await this.transporter.sendMail({
-			from: process.env.SMTP_USER, // кто отправляет письмо
+			from: this.configService.get('SMTP_USER'), // кто отправляет письмо
 			to: email, // кому отправить это письмо
-			subject: `Активация аккаунта на ${process.env.API_URL}`, // тема письма
+			subject: `Активация аккаунта на ${apiUrl}`, // тема письма
 			text: '',
 			// html разметка для тела письма:
 			html: `
         <div>
           <h3>Для активации перейдите по ссылке:</h3>
-          <a href="${link}">${link}</a>
-        </div>`,
+          <a href="${apiUrl}/api/activate/${link}">
+          	${apiUrl}/api/activate/${link}
+          </a>
+        </div>
+			`,
 		});
 	}
 }
-
-export default new MailService();
