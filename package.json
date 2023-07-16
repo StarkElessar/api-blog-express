@@ -9,7 +9,7 @@
     "watch": "tsc -w",
     "dev": "nodemon",
     "generate": "npx prisma generate",
-    "bd": "npx prisma studio"
+    "db": "npx prisma studio"
   },
   "keywords": ["typescript", "express", "prisma", "sqlite"],
   "author": "<serj.elessar@gmail.com> Sergei Chevdar",
