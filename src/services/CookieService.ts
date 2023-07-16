@@ -16,6 +16,6 @@ export class CookieService implements ICookieService {
 	}
 
 	public delete(res: Response, key: string): void {
-		res.clearCookie('refreshToken');
+		res.clearCookie(key);
 	}
 }
