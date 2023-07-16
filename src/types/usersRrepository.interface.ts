@@ -3,6 +3,8 @@ import { UserRegisterDto } from '../dtos/UserRegisterDto';
 
 export interface IUsersRepository {
 	create: (user: UserRegisterDto) => Promise<User>;
-	findOne: (email: string) => Promise<User | null>;
+	findOneByEmail: (email: string) => Promise<User | null>;
+	findOneByActivatedLink: (link: string) => Promise<User | null>;
+	updateUserByLink: (userId: string) => Promise<User | null>;
 	findAll: () => Promise<User[] | null>;
 }
