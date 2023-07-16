@@ -18,6 +18,7 @@ import { IAuthController } from './types/authController.interface';
 import { IUploadsController } from './types/uploadsController.interface';
 import { IConfigService } from './types/configService.interface';
 import { PrismaService } from './services/PrismaService';
+import { AuthMiddleware } from './middlewares/AuthMiddleware';
 
 @injectable()
 export class App {
@@ -56,15 +57,14 @@ export class App {
 		this.app.use(cors({ credentials: true, origin: process.env.CLIENT_URL }))
 		this.app.use(express.json());
 
+		const authMiddleware = new AuthMiddleware(this.configService.get('JWT_ACCESS'));
+		this.app.use(authMiddleware.execute.bind(authMiddleware));
+
 		/**
 		 * Путь к uploads: '/uploads'
 		 * */
 		this.app.use('/uploads', express.static(this.uploadsPath));
 		this.app.use(multer({ storage: this.multerConfig.storage }).single('fileData'));
-	}
-
-	public useExeptionFilters(): void {
-		this.app.use(this.exeptionFilter.catch.bind(this.exeptionFilter));
 	}
 
 	/**
@@ -74,6 +74,10 @@ export class App {
 		this.app.use('/api/upload', this.uploadsController.router);
 		this.app.use('/api/auth', this.authController.router);
 		this.app.use('/api/user', this.userController.router);
+	}
+
+	public useExeptionFilters(): void {
+		this.app.use(this.exeptionFilter.catch.bind(this.exeptionFilter));
 	}
 
 	/**

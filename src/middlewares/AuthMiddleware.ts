@@ -1,34 +1,28 @@
-import { IMiddleware } from '../types/middleware.interface';
-import { NextFunction, Request, Response } from 'express';
 import { verify } from 'jsonwebtoken';
 
-export class AuthMiddleware implements IMiddleware {
-	private readonly _secret: string;
+import { IMiddleware } from '../types/middleware.interface';
+import { NextFunction, Request, Response } from 'express';
+import { UserForTokensDto } from '../dtos/UserForTokensDto';
 
-	constructor(secret: string) {
-		this._secret = secret;
-	}
+export class AuthMiddleware implements IMiddleware {
+	constructor(private secret: string) {}
 
 	public execute(req: Request, res: Response, next: NextFunction): void {
 		if (req.headers?.authorization) {
-			const [_, token] = req.headers.authorization.split(' ');
+			const [_, accessToken] = req.headers.authorization.split(' ');
 
-			verify(token, this.secret, (err, payload): void => {
+			verify(accessToken, this.secret, (err, payload): void => {
 				if (err) {
 					return next();
 				}
 
 				if (payload) {
-					req.user = payload.email;
+					req.user = (<UserForTokensDto>payload).id;
 					return next();
 				}
 			});
+		} else {
+			next();
 		}
-
-		next();
-	}
-
-	get secret(): string {
-		return this._secret;
 	}
 }
