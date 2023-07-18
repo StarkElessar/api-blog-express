@@ -1,3 +1,3 @@
 export class BaseEntity {
-	public id: string;
+	public id: number;
 }

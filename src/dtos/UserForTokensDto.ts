@@ -1,15 +1,9 @@
 import { User } from '@prisma/client';
 
 export class UserForTokensDto {
-	public id: string;
-	public email: string;
-	public isActivated: boolean;
-	public role: string;
+	public id: number;
 
 	constructor(model: User = <User>{}) {
 		this.id = model.id;
-		this.email = model.email;
-		this.isActivated = model.isActivated;
-		this.role = model.role;
 	}
 }

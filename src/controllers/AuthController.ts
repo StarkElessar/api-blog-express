@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { inject, injectable } from 'inversify';
 import { Request, Response, NextFunction } from 'express';
+import { User } from '@prisma/client';
 
 import { BaseController } from './BaseController';
 import { ILogger } from '../types/logger.interface';
@@ -14,11 +15,11 @@ import { HttpError } from '../utils/HttpError';
 import { ITokenService } from '../types/tokenService.interface';
 import { IConfigService } from '../types/configService.interface';
 import { ITokenPair } from '../types/tokenPair';
-import { User } from '@prisma/client';
 import { UserForTokensDto } from '../dtos/UserForTokensDto';
 import { IMailService } from '../types/mailService.interface';
 import { ICookieService } from '../types/cookieService.interface';
 import { IUserData } from '../types/user.interface';
+import { UserResponseDto } from '../dtos/UserResponseDto';
 
 @injectable()
 export class AuthController extends BaseController implements IAuthController {
@@ -53,18 +54,13 @@ export class AuthController extends BaseController implements IAuthController {
 	 * @desc Регистрация
 	 * @access Public
 	 */
-	public async register({ body }: Request<{}, {}, UserRegisterDto>, res: Response, next: NextFunction): Promise<void> {
+	public async register({ body }: Request<{}, {}, UserRegisterDto>, res: Response, next: NextFunction): Promise<Response | void> {
 		try {
-			const candidate: User | null = await this.userService.createUser(body);
+			const candidate: User = await this.userService.createUser(body);
+			const userData: UserResponseDto = new UserResponseDto(candidate);
+			const tokens: ITokenPair = await this.tokenService.generateTokens({ id: candidate.id });
 
-			if (!candidate) {
-				return next(HttpError.unprocessableEntity([], 'Такой пользователь уже существует', 'register'));
-			}
-
-			const userData: UserForTokensDto = new UserForTokensDto(candidate);
-			const tokens: ITokenPair = await this.tokenService.generateTokens(userData);
-
-			await this.tokenService.saveToken(candidate.id, tokens.refreshToken);
+			await this.tokenService.updateToken(candidate.id, tokens.refreshToken);
 			await this.mailService.sendActivationMail(candidate.email, <string>candidate.activationLink);
 			this.cookieService.save(res, 'refreshToken', tokens.refreshToken);
 
@@ -79,16 +75,11 @@ export class AuthController extends BaseController implements IAuthController {
 	 * @desc Авторизация
 	 * @access Public
 	 */
-	public async login({ body }: Request<{}, {}, UserLoginDto>, res: Response, next: NextFunction): Promise<void> {
+	public async login({ body }: Request<{}, {}, UserLoginDto>, res: Response, next: NextFunction): Promise<Response | void> {
 		try {
-			const candidate: UserForTokensDto | null = await this.userService.validateUser(body);
-
-			if (!candidate) {
-				return next(HttpError.unAuthorizedError('login'));
-			}
-
+			const candidate: UserForTokensDto = await this.userService.validateUser(body);
 			const tokens: ITokenPair = await this.tokenService.generateTokens(candidate);
-			await this.tokenService.saveToken(candidate.id, tokens.refreshToken);
+			await this.tokenService.updateToken(candidate.id, tokens.refreshToken);
 			this.cookieService.save(res, 'refreshToken', tokens.refreshToken);
 
 			this.ok(res, { user: candidate, ...tokens });
@@ -118,13 +109,13 @@ export class AuthController extends BaseController implements IAuthController {
 	 * @desc Выход из аккаунта
 	 * @access Public
 	 * */
-	public async logout(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
+	public async logout(req: Request, res: Response, next: NextFunction): Promise<void> {
 		try {
 			const { refreshToken } = req.cookies;
 			await this.tokenService.removeToken(refreshToken);
 			this.cookieService.delete(res, 'refreshToken');
 
-			return res.json({ message: 'Вы вышли из аккаунта' });
+			this.ok(res, { message: 'Вы вышли из аккаунта' });
 		} catch (error) {
 			next(error);
 		}
@@ -141,7 +132,7 @@ export class AuthController extends BaseController implements IAuthController {
 			const userData: IUserData = await this.userService.refresh(refreshToken);
 			this.cookieService.save(res, 'refreshToken', userData.refreshToken);
 
-			return res.status(201).json(userData);
+			this.ok(res, userData);
 		} catch (error) {
 			next(error);
 		}

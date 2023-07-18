@@ -1,6 +1,5 @@
 import 'reflect-metadata';
 import { inject, injectable } from 'inversify';
-import { v4 as uuid } from 'uuid';
 import { User } from '@prisma/client';
 
 import { TYPES } from '../types';
@@ -13,17 +12,22 @@ import { IUserUpdate } from '../types/userUpdate.interface';
 export class UsersRepository implements IUsersRepository {
 	constructor(
 		@inject(TYPES.PrismaService) private prismaService: PrismaService,
-	) {}
+	) {
+	}
 
 	public async create({ email, password, role }: UserRegisterDto): Promise<User> {
-		const activationLink: string = uuid();
 		return this.prismaService.client.user.create({
 			data: {
 				email,
 				password,
-				activationLink,
 				role
 			}
+		});
+	}
+
+	public async findOneById(id: number): Promise<User | null> {
+		return this.prismaService.client.user.findUnique({
+			where: { id }
 		});
 	}
 
@@ -34,17 +38,19 @@ export class UsersRepository implements IUsersRepository {
 	}
 
 	public async findOneByActivatedLink(link: string): Promise<User | null> {
-		return this.prismaService.client.user.findFirst({ where: { activationLink: link } });
+		return this.prismaService.client.user.findFirst({
+			where: { activationLink: link }
+		});
 	}
 
-	public async updateUserByLink(userId: string): Promise<User | null> {
+	public async updateUserByLink(userId: number): Promise<User | null> {
 		return this.prismaService.client.user.update({
 			where: { id: userId },
 			data: { isActivated: true },
-		})
+		});
 	}
 
-	public async update(id: string, data: IUserUpdate): Promise<User | null> {
+	public async update(id: number, data: IUserUpdate): Promise<User | null> {
 		return this.prismaService.client.user.update({
 			where: { id },
 			data: { ...data }

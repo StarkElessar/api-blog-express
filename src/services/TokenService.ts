@@ -17,7 +17,8 @@ export class TokenService implements ITokenService {
 	constructor(
 		@inject(TYPES.ConfigService) private configService: IConfigService,
 		@inject(TYPES.TokensRepository) private tokensRepository: TokensRepository,
-		) {}
+	) {
+	}
 
 	private signJWT(payload: UserForTokensDto, secret: string, expires: string | number): Promise<string> {
 		return new Promise((resolve, reject): void => {
@@ -41,15 +42,11 @@ export class TokenService implements ITokenService {
 		};
 	}
 
-	public validateAccessToken(token: string): UserForTokensDto | null {
-		return <UserForTokensDto>verify(token, this.configService.get('JWT_ACCESS'));
+	public validateToken(token: string, secretKey: string): UserForTokensDto | null {
+		return <UserForTokensDto>verify(token, this.configService.get(secretKey));
 	}
 
-	public validateRefreshToken(token: string): UserForTokensDto | null {
-		return <UserForTokensDto>verify(token, this.configService.get('JWT_REFRESH'));
-	}
-
-	public async saveToken(userId: string, refreshToken: string): Promise<Token | null> {
+	public async updateToken(userId: number, refreshToken: string): Promise<Token | null> {
 		const tokenData: Token | null = await this.tokensRepository.findByUserId(userId);
 
 		if (tokenData) {
@@ -71,15 +68,5 @@ export class TokenService implements ITokenService {
 		}
 
 		return this.tokensRepository.delete(data.id);
-	}
-
-	async findToken(refreshToken: string): Promise<Token> {
-		const tokenData: Token | null = await this.tokensRepository.findByToken(refreshToken);
-
-		if (!tokenData) {
-			throw HttpError.badRequest('Токен не найден');
-		}
-
-		return tokenData;
 	}
 }

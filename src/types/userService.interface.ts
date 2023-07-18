@@ -6,8 +6,8 @@ import { UserForTokensDto } from '../dtos/UserForTokensDto';
 import { IUserData } from './user.interface';
 
 export interface IUserService {
-	createUser: (dto: UserRegisterDto) => Promise<User | null>;
-	validateUser: (dto: UserLoginDto) => Promise<UserForTokensDto | null>;
+	createUser: (dto: UserRegisterDto) => Promise<User>;
+	validateUser: (dto: UserLoginDto) => Promise<UserForTokensDto>;
 	activate: (activationLink: string) => Promise<User | null>;
 	sendPasswordResetLink: (email: string) => Promise<User | null>;
 	resetPassword: (link: string) => Promise<User>;

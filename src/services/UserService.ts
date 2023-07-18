@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { inject, injectable } from 'inversify';
+import { v4 as uuid } from 'uuid';
 import { Token, User } from '@prisma/client';
 
 import { HttpError } from '../utils/HttpError';
@@ -15,7 +16,7 @@ import { ITokenService } from '../types/tokenService.interface';
 import { ITokensRepository } from '../types/tokensRepository.interface';
 import { ITokenPair } from '../types/tokenPair';
 import { IUserData } from '../types/user.interface';
-import { v4 as uuid } from 'uuid';
+import { UserResponseDto } from '../dtos/UserResponseDto';
 
 @injectable()
 export class UserService implements IUserService {
@@ -27,22 +28,21 @@ export class UserService implements IUserService {
 	) {
 	}
 
-	public async createUser({ email, password, role = 'user' }: UserRegisterDto): Promise<User | null> {
+	public async createUser({ email, password, role = 'user' }: UserRegisterDto): Promise<User> {
 		const existedUser: User | null = await this.usersRepository.findOneByEmail(email);
 
 		if (existedUser) {
-			return null;
+			throw HttpError.unprocessableEntity([], 'Такой пользователь уже существует', 'createUser');
 		}
 
 		const newUser: UserEntity = new UserEntity(email, role);
 		const salt: string = this.configService.get('SALT');
 		await newUser.setPassword(password, Number(salt));
 
-		/** TODO: Проверка, что он есть? Если есть - возвращаем null иначе создаём */
 		return this.usersRepository.create(newUser);
 	}
 
-	public async validateUser({ email, password }: UserLoginDto): Promise<UserForTokensDto | null> {
+	public async validateUser({ email, password }: UserLoginDto): Promise<UserForTokensDto> {
 		const existedUser: User | null = await this.usersRepository.findOneByEmail(email);
 
 		if (!existedUser) {
@@ -78,24 +78,25 @@ export class UserService implements IUserService {
 			throw HttpError.unAuthorizedError('refresh');
 		}
 
-		const userData: UserForTokensDto | null = await this.tokenService.validateRefreshToken(refreshToken);
+		const userData: UserForTokensDto | null = await this.tokenService.validateToken(refreshToken, 'JWT_REFRESH');
 		const tokenFromDB: Token | null = await this.tokensRepository.findByToken(refreshToken);
 
 		if (!userData || !tokenFromDB) {
 			throw HttpError.unAuthorizedError('refresh');
 		}
 
-		const user: User | null = await this.usersRepository.findOneByEmail(userData.email);
+		const user: User | null = await this.usersRepository.findOneById(userData.id);
 
 		if (!user) {
 			throw HttpError.badRequest('Пользователь не найден');
 		}
 
-		const userDto: UserForTokensDto = new UserForTokensDto(user);
-		const tokens: ITokenPair = await this.tokenService.generateTokens(userDto);
-		await this.tokenService.saveToken(userDto.id, tokens.refreshToken);
+		const userDataForTokens: UserForTokensDto = new UserForTokensDto(user);
+		const userDataResponse: UserResponseDto = new UserResponseDto(user);
+		const tokens: ITokenPair = await this.tokenService.generateTokens(userDataForTokens);
+		await this.tokenService.updateToken(userDataForTokens.id, tokens.refreshToken);
 
-		return { ...tokens, user: userDto };
+		return { ...tokens, user: userDataResponse };
 	}
 
 	public async sendPasswordResetLink(email: string): Promise<User | null> {

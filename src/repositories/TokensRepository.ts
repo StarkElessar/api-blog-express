@@ -11,22 +11,22 @@ export class TokensRepository implements ITokensRepository {
 	constructor(@inject(TYPES.PrismaService) private prismaService: PrismaService) {
 	}
 
-	public create(userId: string, token: string): Promise<Token | null> {
+	public create(userId: number, token: string): Promise<Token | null> {
 		return this.prismaService.client.token.create({ data: { userId, refreshToken: token } });
 	}
 
-	public update(id: string, token: string): Promise<Token | null> {
+	public update(id: number, token: string): Promise<Token | null> {
 		return this.prismaService.client.token.update({
 			where: { id },
 			data: { refreshToken: token },
 		});
 	}
 
-	public delete(id: string): Promise<Token> {
+	public delete(id: number): Promise<Token> {
 		return this.prismaService.client.token.delete({ where: { id } });
 	}
 
-	public findByUserId(userId: string): Promise<Token | null> {
+	public findByUserId(userId: number): Promise<Token | null> {
 		return this.prismaService.client.token.findFirst({ where: { userId } });
 	}
 
