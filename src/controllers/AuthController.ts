@@ -40,9 +40,11 @@ export class AuthController extends BaseController implements IAuthController {
 				middlewares: [ new ValidateMiddleware(UserRegisterDto) ]
 			},
 			{ path: '/login', method: 'post', func: this.login },
-			{ path: '/activate/:link', method: 'get', func: this.activate as any },
+			{ path: '/activate/:link', method: 'get', func: <any>this.activate },
 			{ path: '/logout', method: 'get', func: this.logout },
 			{ path: '/refresh', method: 'get', func: this.refresh },
+			{ path: '/reset', method: 'post', func: this.sendPasswordResetLink },
+			{ path: '/reset/:link', method: 'get', func: <any>this.resetPassword },
 		]);
 	}
 
@@ -140,6 +142,44 @@ export class AuthController extends BaseController implements IAuthController {
 			this.cookieService.save(res, 'refreshToken', userData.refreshToken);
 
 			return res.status(201).json(userData);
+		} catch (error) {
+			next(error);
+		}
+	}
+
+	/**
+	 * @route POST api/auth/reset
+	 * @desc Запрос на восстановление пароля
+	 * @access Public
+	 * */
+	public async sendPasswordResetLink({ body }: Request<{}, {}, {
+		email: string
+	}>, res: Response, next: NextFunction): Promise<void> {
+		try {
+			const candidate: User | null = await this.userService.sendPasswordResetLink(body.email);
+
+			if (!candidate) {
+				return next(HttpError.badRequest('Не удалось создать ссылку для восстановления пароля'));
+			}
+
+			await this.mailService.sendResetPasswordMail(candidate.email, <string>candidate.activationLink);
+			this.ok(res, { message: 'Письмо для восстановления пароля отправлено на почту' });
+		} catch (error) {
+			next(error);
+		}
+	}
+
+	/**
+	 * @route GET api/auth/reset/:link
+	 * @desc Сброс пароля
+	 * @access Public
+	 * */
+	public async resetPassword(req: Request<{ link: string }>, res: Response, next: NextFunction): Promise<void> {
+		try { const resetLink: string = req.params.link;
+			await this.userService.resetPassword(resetLink);
+			const resetToken = 'asdad';
+
+			return res.redirect(this.configService.get('CLIENT_URL') + `/auth/reset?token=${resetToken}`);
 		} catch (error) {
 			next(error);
 		}
