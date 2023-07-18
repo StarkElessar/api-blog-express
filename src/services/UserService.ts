@@ -15,6 +15,7 @@ import { ITokenService } from '../types/tokenService.interface';
 import { ITokensRepository } from '../types/tokensRepository.interface';
 import { ITokenPair } from '../types/tokenPair';
 import { IUserData } from '../types/user.interface';
+import { v4 as uuid } from 'uuid';
 
 @injectable()
 export class UserService implements IUserService {
@@ -27,7 +28,7 @@ export class UserService implements IUserService {
 	}
 
 	public async createUser({ email, password, role = 'user' }: UserRegisterDto): Promise<User | null> {
-		const existedUser = await this.usersRepository.findOneByEmail(email);
+		const existedUser: User | null = await this.usersRepository.findOneByEmail(email);
 
 		if (existedUser) {
 			return null;
@@ -69,7 +70,7 @@ export class UserService implements IUserService {
 			throw HttpError.badRequest('Аккаунт уже был активирован');
 		}
 
-		return this.usersRepository.updateUserByLink(user.id);
+		return this.usersRepository.update(user.id, { isActivated: true });
 	}
 
 	public async refresh(refreshToken: string): Promise<IUserData> {
@@ -95,6 +96,29 @@ export class UserService implements IUserService {
 		await this.tokenService.saveToken(userDto.id, tokens.refreshToken);
 
 		return { ...tokens, user: userDto };
+	}
+
+	public async sendPasswordResetLink(email: string): Promise<User | null> {
+		const existedUser: User | null = await this.usersRepository.findOneByEmail(email);
+
+		if (!existedUser) {
+			throw HttpError.badRequest('Пользователь с таким email не найден');
+		}
+
+		const resetLink: string = uuid();
+		return this.usersRepository.update(existedUser.id, {
+			activationLink: resetLink
+		});
+	}
+
+	public async resetPassword(link: string): Promise<User> {
+		const existedUser: User | null = await this.usersRepository.findOneByActivatedLink(link);
+
+		if (!existedUser) {
+			throw HttpError.badRequest('Некорректная ссылка восстановления');
+		}
+
+		return existedUser;
 	}
 
 	public async getAll(): Promise<User[] | null> {
