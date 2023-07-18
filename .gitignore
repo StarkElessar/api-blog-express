@@ -1,6 +1,5 @@
 /node_modules
 /dist
-/prisma/dev.db
 
 /.idea
 /logs.txt
