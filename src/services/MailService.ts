@@ -25,7 +25,7 @@ export class MailService implements IMailService {
 	 * Метод для отправки письма с активацией:
 	 * */
 	public async sendActivationMail(email: string, link: string): Promise<void> {
-		const apiUrl = this.configService.get('API_URL');
+		const apiUrl: string = this.configService.get('API_URL');
 		await this.transporter.sendMail({
 			from: this.configService.get('SMTP_USER'), // кто отправляет письмо
 			to: email, // кому отправить это письмо
@@ -35,11 +35,26 @@ export class MailService implements IMailService {
 			html: `
         <div>
           <h3>Для активации перейдите по ссылке:</h3>
-          <a href="${apiUrl}/api/activate/${link}">
-          	${apiUrl}/api/activate/${link}
-          </a>
+          <a href="${apiUrl}/api/auth/activate/${link}">активировать аккаунт</a>
         </div>
 			`,
 		});
+	}
+
+	public async sendResetPasswordMail(email: string, link: string): Promise<void> {
+		const apiUrl: string = this.configService.get('API_URL');
+		await this.transporter.sendMail({
+			from: this.configService.get('SMTP_USER'),
+			to: email,
+			subject: `Восстановление пароля для аккаунта на сайте ${apiUrl}`,
+			text: '',
+			html: `
+				<div>
+          <h3>Для восстановления пароля перейдите по ссылке:</h3>
+          <a href="${apiUrl}/api/auth/reset/${link}">восстановить пароль</a>
+        </div>
+			`
+		})
+
 	}
 }
