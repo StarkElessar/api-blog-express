@@ -1,53 +1,58 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
-  provider = "prisma-client-js"
+	provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+	provider = "sqlite"
+	url      = env("DATABASE_URL")
 }
 
 model User {
-  id             String  @id @default(uuid())
-  email          String  @unique
-  password       String
-  firstName      String?
-  lastName       String?
-  age            Int?
-  isActivated    Boolean @default(false)
-  activationLink String?
-  role           String  @default("user")
+	id             Int      @id @default(autoincrement())
+	createdAt      DateTime @default(now())
+	updatedAt      DateTime @updatedAt
+	email          String   @unique
+	password       String
+	avatar         String?
+	firstName      String?
+	lastName       String?
+	age            Int?
+	isActivated    Boolean  @default(false)
+	activationLink String?  @default(uuid())
+	role           String   @default("user")
 
-  tokens   Token[]
-  posts    Post[]
-  comments Comment[]
+	comments Comment[]
+	posts    Post[]
+	tokens   Token[]
 }
 
 model Token {
-  id           String @id @default(uuid())
-  refreshToken String
-  userId       String
-  user         User   @relation(fields: [userId], references: [id])
+	id           Int      @id @default(autoincrement())
+	createdAt    DateTime @default(now())
+	updatedAt    DateTime @updatedAt
+	refreshToken String
+	userId       Int
+	user         User     @relation(fields: [userId], references: [id])
 }
 
 model Post {
-  id      String @id @default(uuid())
-  title   String
-  content String
-  userId  String
-  user    User   @relation(fields: [userId], references: [id])
-
-  comments Comment[]
+	id        Int       @id @default(autoincrement())
+	createdAt DateTime  @default(now())
+	updatedAt DateTime  @updatedAt
+	title     String
+	content   String
+	userId    Int
+	comments  Comment[]
+	user      User      @relation(fields: [userId], references: [id])
 }
 
 model Comment {
-  id      String @id @default(uuid())
-  content String
-  postId  String
-  post    Post   @relation(fields: [postId], references: [id])
-  userId  String
-  user    User   @relation(fields: [userId], references: [id])
+	id        Int      @id @default(autoincrement())
+	createdAt DateTime @default(now())
+	updatedAt DateTime @updatedAt
+	content   String
+	postId    Int
+	userId    Int
+	user      User     @relation(fields: [userId], references: [id])
+	post      Post     @relation(fields: [postId], references: [id])
 }
