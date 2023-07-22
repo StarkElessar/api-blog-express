@@ -11,7 +11,7 @@ export class ValidateMiddleware implements IMiddleware {
 
 		validate(instance).then((errors) => {
 			if (errors.length) {
-				return next(HttpError.unprocessableEntity(errors, undefined, 'Validate Middleware'));
+				return next(HttpError.unprocessableEntity('Validate Middleware', undefined, errors));
 			}
 
 			next();
