@@ -42,8 +42,30 @@ export class TokenService implements ITokenService {
 		};
 	}
 
-	public validateToken(token: string, secretKey: string): UserForTokensDto | null {
-		return <UserForTokensDto>verify(token, this.configService.get(secretKey));
+	public async generateResetToken(payload: UserForTokensDto): Promise<string> {
+		return this.signJWT(payload, this.configService.get('JWT_ACCESS'), '10m');
+	}
+
+	public validateToken(token: string, secretKey: string): Promise<UserForTokensDto> {
+		return new Promise((resolve, reject) => {
+			verify(token, secretKey, (err, decoded) => {
+				if (err) {
+					switch (err.message) {
+						case 'jwt expired':
+							reject(HttpError.unprocessableEntity('TokenValidate', 'Срок действия токена вышел', [err.message]));
+							break;
+						case 'invalid signature':
+							reject(HttpError.unprocessableEntity('TokenValidate', 'Токен не валидный', [err.message]));
+							break;
+						default:
+							reject(HttpError.unprocessableEntity('TokenValidate', 'При валидации токена произошла ошибка', [err.message]));
+							break;
+					}
+				}
+
+				resolve(<UserForTokensDto>decoded);
+			})
+		});
 	}
 
 	public async updateToken(userId: number, refreshToken: string): Promise<Token | null> {
@@ -56,7 +78,7 @@ export class TokenService implements ITokenService {
 		return this.tokensRepository.create(userId, refreshToken);
 	}
 
-	async removeToken(refreshToken: string): Promise<Token> {
+	public async removeToken(refreshToken: string): Promise<Token> {
 		if (!refreshToken) {
 			throw HttpError.unAuthorizedError('logout');
 		}
