@@ -27,9 +27,9 @@ export class HttpError extends Error implements IHttpError {
 	};
 
 	public static unprocessableEntity(
-		errors: unknown[] = [],
+		context: string,
 		message: string = 'Ошибка при валидации',
-		context: string
+		errors: unknown[] = [],
 	): HttpError {
 		return new HttpError(422, message, errors, context);
 	};
