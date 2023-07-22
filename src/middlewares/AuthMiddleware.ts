@@ -1,7 +1,7 @@
 import { verify } from 'jsonwebtoken';
+import { NextFunction, Request, Response } from 'express';
 
 import { IMiddleware } from '../types/middleware.interface';
-import { NextFunction, Request, Response } from 'express';
 import { UserForTokensDto } from '../dtos/UserForTokensDto';
 
 export class AuthMiddleware implements IMiddleware {

@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { inject, injectable } from 'inversify';
 import { Request, Response, NextFunction } from 'express';
-import { User } from '@prisma/client';
+import { Token, User } from '@prisma/client';
 
 import { BaseController } from './BaseController';
 import { ILogger } from '../types/logger.interface';
@@ -20,6 +20,8 @@ import { IMailService } from '../types/mailService.interface';
 import { ICookieService } from '../types/cookieService.interface';
 import { IUserData } from '../types/user.interface';
 import { UserResponseDto } from '../dtos/UserResponseDto';
+import { AuthGuard } from '../middlewares/AuthGuard';
+import { UserUpdatePasswordDto } from '../dtos/UserUpdatePasswordDto';
 
 @injectable()
 export class AuthController extends BaseController implements IAuthController {
@@ -45,7 +47,13 @@ export class AuthController extends BaseController implements IAuthController {
 			{ path: '/logout', method: 'get', func: this.logout },
 			{ path: '/refresh', method: 'get', func: this.refresh },
 			{ path: '/reset', method: 'post', func: this.sendPasswordResetLink },
-			{ path: '/reset/:link', method: 'get', func: <any>this.resetPassword },
+			{ path: '/reset/:token', method: 'get', func: <any>this.resetPassword },
+			{
+				path: '/password-reset',
+				method: 'post',
+				func: this.updatePasswordAfterReset,
+				middlewares: [ new AuthGuard(), new ValidateMiddleware(UserUpdatePasswordDto) ]
+			},
 		]);
 	}
 
@@ -147,13 +155,13 @@ export class AuthController extends BaseController implements IAuthController {
 		email: string
 	}>, res: Response, next: NextFunction): Promise<void> {
 		try {
-			const candidate: User | null = await this.userService.sendPasswordResetLink(body.email);
+			const resetToken: Token | null = await this.userService.sendPasswordResetLink(body.email);
 
-			if (!candidate) {
+			if (!resetToken) {
 				return next(HttpError.badRequest('Не удалось создать ссылку для восстановления пароля'));
 			}
 
-			await this.mailService.sendResetPasswordMail(candidate.email, <string>candidate.activationLink);
+			await this.mailService.sendResetPasswordMail(body.email, resetToken.refreshToken);
 			this.ok(res, { message: 'Письмо для восстановления пароля отправлено на почту' });
 		} catch (error) {
 			next(error);
@@ -165,12 +173,39 @@ export class AuthController extends BaseController implements IAuthController {
 	 * @desc Сброс пароля
 	 * @access Public
 	 * */
-	public async resetPassword(req: Request<{ link: string }>, res: Response, next: NextFunction): Promise<void> {
-		try { const resetLink: string = req.params.link;
-			await this.userService.resetPassword(resetLink);
-			const resetToken = 'asdad';
+	public async resetPassword(req: Request<{ token: string }>, res: Response, next: NextFunction): Promise<void> {
+		try {
+			const resetToken: string = req.params.token;
+
+			if (!resetToken) {
+				return next(HttpError.badRequest('Некорректная ссылка восстановления'));
+			}
+
+			const user: User = await this.userService.resetPassword(resetToken);
+
+			if (!user.isActivated) {
+				return next(HttpError.badRequest('Аккаунт не активирован'));
+			}
 
 			return res.redirect(this.configService.get('CLIENT_URL') + `/auth/reset?token=${resetToken}`);
+		} catch (error) {
+			next(error);
+		}
+	}
+
+	public async updatePasswordAfterReset(req: Request<{}, {}, UserUpdatePasswordDto>, res: Response, next: NextFunction): Promise<void> {
+		try {
+			if (req.body.password !== req.body.confirmPassword) {
+				next(HttpError.unprocessableEntity('updatePasswordAfterReset', 'Пароли не совпадают'));
+			}
+
+			const userData: User | null = await this.userService.updatePassword(req.user, req.body.password);
+
+			if (!userData) {
+				return next(HttpError.badRequest('Не удалось обновить пароль'));
+			}
+
+			this.ok(res, { message: 'Пароль успешно обновлён' });
 		} catch (error) {
 			next(error);
 		}

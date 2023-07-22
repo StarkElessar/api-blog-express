@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { inject, injectable } from 'inversify';
-import { v4 as uuid } from 'uuid';
+import { hash } from 'bcrypt';
 import { Token, User } from '@prisma/client';
 
 import { HttpError } from '../utils/HttpError';
@@ -32,7 +32,7 @@ export class UserService implements IUserService {
 		const existedUser: User | null = await this.usersRepository.findOneByEmail(email);
 
 		if (existedUser) {
-			throw HttpError.unprocessableEntity([], 'Такой пользователь уже существует', 'createUser');
+			throw HttpError.unprocessableEntity('createUser', 'Такой пользователь уже существует', []);
 		}
 
 		const newUser: UserEntity = new UserEntity(email, role);
@@ -78,7 +78,8 @@ export class UserService implements IUserService {
 			throw HttpError.unAuthorizedError('refresh');
 		}
 
-		const userData: UserForTokensDto | null = await this.tokenService.validateToken(refreshToken, 'JWT_REFRESH');
+		const secretKey: string = this.configService.get('JWT_REFRESH');
+		const userData: UserForTokensDto | null = await this.tokenService.validateToken(refreshToken, secretKey);
 		const tokenFromDB: Token | null = await this.tokensRepository.findByToken(refreshToken);
 
 		if (!userData || !tokenFromDB) {
@@ -99,27 +100,45 @@ export class UserService implements IUserService {
 		return { ...tokens, user: userDataResponse };
 	}
 
-	public async sendPasswordResetLink(email: string): Promise<User | null> {
+	public async sendPasswordResetLink(email: string): Promise<Token | null> {
 		const existedUser: User | null = await this.usersRepository.findOneByEmail(email);
 
 		if (!existedUser) {
 			throw HttpError.badRequest('Пользователь с таким email не найден');
 		}
 
-		const resetLink: string = uuid();
-		return this.usersRepository.update(existedUser.id, {
-			activationLink: resetLink
-		});
+		const userDataForTokens: UserForTokensDto = new UserForTokensDto(existedUser);
+		const resetToken: string = await this.tokenService.generateResetToken(userDataForTokens);
+		return this.tokensRepository.update(existedUser.id, resetToken);
 	}
 
-	public async resetPassword(link: string): Promise<User> {
-		const existedUser: User | null = await this.usersRepository.findOneByActivatedLink(link);
+	public async resetPassword(token: string): Promise<User> {
+		const secretKey: string = this.configService.get('JWT_ACCESS');
+		const userData: UserForTokensDto | null = await this.tokenService.validateToken(token, secretKey);
 
-		if (!existedUser) {
+		if (!userData) {
 			throw HttpError.badRequest('Некорректная ссылка восстановления');
 		}
 
+		const existedUser: User | null = await this.usersRepository.findOneById(userData.id);
+
+		if (!existedUser) {
+			throw HttpError.badRequest('Пользователь для восстановления пароля не найден');
+		}
+
 		return existedUser;
+	}
+
+	public async updatePassword(userId: number, password: string): Promise<User | null> {
+		const userData: User | null = await this.usersRepository.findOneById(userId);
+
+		if (!userData) {
+			throw HttpError.badRequest('Пользователь не найден');
+		}
+
+		const salt: string = this.configService.get('SALT');
+		const newHashPassword: string = await hash(password, Number(salt));
+		return this.usersRepository.update(userId, { password: newHashPassword });
 	}
 
 	public async getAll(): Promise<User[] | null> {
