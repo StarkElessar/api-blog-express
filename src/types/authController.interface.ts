@@ -8,5 +8,6 @@ export interface IAuthController extends IBaseController {
 	logout: (req: Request, res: Response, next: NextFunction) => Promise<Response | void>;
 	refresh: (req: Request, res: Response, next: NextFunction) => Promise<Response | void>;
 	sendPasswordResetLink: (req: Request<{}, {}, { email: string }>, res: Response, next: NextFunction) => Promise<void>;
-	resetPassword: (eq: Request<{ link: string }>, res: Response, next: NextFunction) => Promise<void>;
+	resetPassword: (eq: Request<{ token: string }>, res: Response, next: NextFunction) => Promise<void>;
+	updatePasswordAfterReset: (req: Request, res: Response, next: NextFunction) => Promise<void>;
 }
