@@ -41,6 +41,7 @@ export class MailService implements IMailService {
 		});
 	}
 
+	// TODO: обработать колбек
 	public async sendResetPasswordMail(email: string, link: string): Promise<void> {
 		const apiUrl: string = this.configService.get('API_URL');
 		await this.transporter.sendMail({
@@ -54,7 +55,7 @@ export class MailService implements IMailService {
           <a href="${apiUrl}/api/auth/reset/${link}">восстановить пароль</a>
         </div>
 			`
-		})
+		}, (err, info) => {})
 
 	}
 }
