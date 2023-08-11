@@ -10,8 +10,8 @@ export class CookieService implements ICookieService {
 		res.cookie(key, token, {
 			maxAge: 30 * 24 * 60 * 60 * 1000,
 			httpOnly: true,
-			secure: true,
-			sameSite: 'none'
+			secure: false,
+			sameSite: 'strict'
 		});
 	}
 
