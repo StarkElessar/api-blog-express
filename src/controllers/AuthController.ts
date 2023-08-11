@@ -22,6 +22,7 @@ import { IUserData } from '../types/user.interface';
 import { UserResponseDto } from '../dtos/UserResponseDto';
 import { AuthGuard } from '../middlewares/AuthGuard';
 import { UserUpdatePasswordDto } from '../dtos/UserUpdatePasswordDto';
+import { UserDto } from '../dtos/UserDto';
 
 @injectable()
 export class AuthController extends BaseController implements IAuthController {
@@ -44,6 +45,12 @@ export class AuthController extends BaseController implements IAuthController {
 			},
 			{ path: '/login', method: 'post', func: this.login },
 			{ path: '/activate/:link', method: 'get', func: <any>this.activate },
+			{
+				path: '/get-current-user',
+				method: 'get',
+				func: this.getCurrentUser,
+				middlewares: [ new AuthGuard() ]
+			},
 			{ path: '/logout', method: 'get', func: this.logout },
 			{ path: '/refresh', method: 'get', func: this.refresh },
 			{ path: '/reset', method: 'post', func: this.sendPasswordResetLink },
@@ -107,6 +114,15 @@ export class AuthController extends BaseController implements IAuthController {
 			await this.userService.activate(activationLink);
 
 			return res.redirect(this.configService.get('CLIENT_URL'));
+		} catch (error) {
+			next(error);
+		}
+	}
+
+	public async getCurrentUser(req: Request, res: Response, next: NextFunction): Promise<void> {
+		try {
+			const user: UserDto = await this.userService.getCurrentUser(req.user);
+			this.ok(res, user);
 		} catch (error) {
 			next(error);
 		}
@@ -205,6 +221,7 @@ export class AuthController extends BaseController implements IAuthController {
 				return next(HttpError.badRequest('Не удалось обновить пароль'));
 			}
 
+			// TODO: сделать редирект на логин.
 			this.ok(res, { message: 'Пароль успешно обновлён' });
 		} catch (error) {
 			next(error);
