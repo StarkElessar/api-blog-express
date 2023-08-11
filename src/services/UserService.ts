@@ -17,6 +17,7 @@ import { ITokensRepository } from '../types/tokensRepository.interface';
 import { ITokenPair } from '../types/tokenPair';
 import { IUserData } from '../types/user.interface';
 import { UserResponseDto } from '../dtos/UserResponseDto';
+import { UserDto } from '../dtos/UserDto';
 
 @injectable()
 export class UserService implements IUserService {
@@ -114,16 +115,11 @@ export class UserService implements IUserService {
 
 	public async resetPassword(token: string): Promise<User> {
 		const secretKey: string = this.configService.get('JWT_ACCESS');
-		const userData: UserForTokensDto | null = await this.tokenService.validateToken(token, secretKey);
-
-		if (!userData) {
-			throw HttpError.badRequest('Некорректная ссылка восстановления');
-		}
-
+		const userData: UserForTokensDto = await this.tokenService.validateToken(token, secretKey);
 		const existedUser: User | null = await this.usersRepository.findOneById(userData.id);
 
 		if (!existedUser) {
-			throw HttpError.badRequest('Пользователь для восстановления пароля не найден');
+			throw HttpError.badRequest('Пользователь не найден');
 		}
 
 		return existedUser;
@@ -139,6 +135,16 @@ export class UserService implements IUserService {
 		const salt: string = this.configService.get('SALT');
 		const newHashPassword: string = await hash(password, Number(salt));
 		return this.usersRepository.update(userId, { password: newHashPassword });
+	}
+
+	public async getCurrentUser(userId: number): Promise<UserDto> {
+		const userData: User | null = await this.usersRepository.findOneById(userId);
+
+		if (!userData) {
+			throw HttpError.badRequest('Пользователь не найден');
+		}
+
+		return new UserDto(userData);
 	}
 
 	public async getAll(): Promise<User[] | null> {
