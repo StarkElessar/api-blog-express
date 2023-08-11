@@ -4,6 +4,3 @@
 /.idea
 /logs.txt
 /package-lock.json
-
-# Keep environment variables out of version control
-/.env
