@@ -6,7 +6,7 @@ import { Token } from '@prisma/client';
 import { HttpError } from '../utils/HttpError';
 import { UserForTokensDto } from '../dtos/UserForTokensDto';
 import { ITokenService } from '../types/tokenService.interface';
-import { TYPES } from '../types';
+import { DiTypes } from '../diTypes';
 import { IConfigService } from '../types/configService.interface';
 import { TokensRepository } from '../repositories/TokensRepository';
 import { ITokenPair } from '../types/tokenPair';
@@ -15,8 +15,8 @@ import { ITokenPair } from '../types/tokenPair';
 @injectable()
 export class TokenService implements ITokenService {
 	constructor(
-		@inject(TYPES.ConfigService) private configService: IConfigService,
-		@inject(TYPES.TokensRepository) private tokensRepository: TokensRepository,
+		@inject(DiTypes.ConfigService) private _configService: IConfigService,
+		@inject(DiTypes.TokensRepository) private _tokensRepository: TokensRepository,
 	) {
 	}
 
@@ -33,8 +33,8 @@ export class TokenService implements ITokenService {
 	}
 
 	public async generateTokens(payload: UserForTokensDto): Promise<ITokenPair> {
-		const accessToken: string = await this.signJWT(payload, this.configService.get('JWT_ACCESS'), '30m');
-		const refreshToken: string = await this.signJWT(payload, this.configService.get('JWT_REFRESH'), '30d');
+		const accessToken: string = await this.signJWT(payload, this._configService.get('JWT_ACCESS'), '30m');
+		const refreshToken: string = await this.signJWT(payload, this._configService.get('JWT_REFRESH'), '30d');
 
 		return {
 			accessToken,
@@ -43,7 +43,7 @@ export class TokenService implements ITokenService {
 	}
 
 	public async generateResetToken(payload: UserForTokensDto): Promise<string> {
-		return this.signJWT(payload, this.configService.get('JWT_ACCESS'), '10m');
+		return this.signJWT(payload, this._configService.get('JWT_ACCESS'), '10m');
 	}
 
 	public validateToken(token: string, secretKey: string): Promise<UserForTokensDto> {
@@ -69,13 +69,13 @@ export class TokenService implements ITokenService {
 	}
 
 	public async updateToken(userId: number, refreshToken: string): Promise<Token | null> {
-		const tokenData: Token | null = await this.tokensRepository.findByUserId(userId);
+		const tokenData: Token | null = await this._tokensRepository.findByUserId(userId);
 
 		if (tokenData) {
-			return this.tokensRepository.update(tokenData.id, refreshToken);
+			return this._tokensRepository.update(tokenData.id, refreshToken);
 		}
 
-		return this.tokensRepository.create(userId, refreshToken);
+		return this._tokensRepository.create(userId, refreshToken);
 	}
 
 	public async removeToken(refreshToken: string): Promise<Token> {
@@ -83,12 +83,12 @@ export class TokenService implements ITokenService {
 			throw HttpError.unAuthorizedError('logout');
 		}
 
-		const data: Token | null = await this.tokensRepository.findByToken(refreshToken);
+		const data: Token | null = await this._tokensRepository.findByToken(refreshToken);
 
 		if (!data) {
 			throw HttpError.badRequest('Токен не найден');
 		}
 
-		return this.tokensRepository.delete(data.id);
+		return this._tokensRepository.delete(data.id);
 	}
 }

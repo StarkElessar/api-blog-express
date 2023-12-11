@@ -5,7 +5,7 @@ import { Token, User } from '@prisma/client';
 
 import { BaseController } from './BaseController';
 import { ILogger } from '../types/logger.interface';
-import { TYPES } from '../types';
+import { DiTypes } from '../diTypes';
 import { IAuthController } from '../types/authController.interface';
 import { UserLoginDto } from '../dtos/UserLoginDto';
 import { ValidateMiddleware } from '../middlewares/ValidateMiddleware';
@@ -27,12 +27,12 @@ import { UserDto } from '../dtos/UserDto';
 @injectable()
 export class AuthController extends BaseController implements IAuthController {
 	constructor(
-		@inject(TYPES.ILogger) private loggerService: ILogger,
-		@inject(TYPES.UserService) private userService: IUserService,
-		@inject(TYPES.TokenService) private tokenService: ITokenService,
-		@inject(TYPES.ConfigService) private configService: IConfigService,
-		@inject(TYPES.MailService) private mailService: IMailService,
-		@inject(TYPES.CookieService) private cookieService: ICookieService,
+		@inject(DiTypes.ILogger) loggerService: ILogger,
+		@inject(DiTypes.UserService) private _userService: IUserService,
+		@inject(DiTypes.TokenService) private _tokenService: ITokenService,
+		@inject(DiTypes.ConfigService) private _configService: IConfigService,
+		@inject(DiTypes.MailService) private _mailService: IMailService,
+		@inject(DiTypes.CookieService) private _cookieService: ICookieService,
 	) {
 		super(loggerService);
 
@@ -136,8 +136,8 @@ export class AuthController extends BaseController implements IAuthController {
 	public async logout(req: Request, res: Response, next: NextFunction): Promise<void> {
 		try {
 			const { refreshToken } = req.cookies;
-			await this.tokenService.removeToken(refreshToken);
-			this.cookieService.delete(res, 'refreshToken');
+			await this._tokenService.removeToken(refreshToken);
+			this._cookieService.delete(res, 'refreshToken');
 
 			this.ok(res, { message: 'Вы вышли из аккаунта' });
 		} catch (error) {
@@ -153,8 +153,8 @@ export class AuthController extends BaseController implements IAuthController {
 	public async refresh(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
 		try {
 			const { refreshToken } = req.cookies;
-			const userData: IUserData = await this.userService.refresh(refreshToken);
-			this.cookieService.save(res, 'refreshToken', userData.refreshToken);
+			const userData: IUserData = await this._userService.refresh(refreshToken);
+			this._cookieService.save(res, 'refreshToken', userData.refreshToken);
 
 			this.ok(res, userData);
 		} catch (error) {

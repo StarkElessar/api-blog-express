@@ -6,7 +6,7 @@ import { User } from '@prisma/client';
 import { BaseController } from './BaseController';
 import { ILogger } from '../types/logger.interface';
 import { IUserController } from '../types/userController.interface';
-import { TYPES } from '../types';
+import { DiTypes } from '../diTypes';
 import { IUserService } from '../types/userService.interface';
 import { HttpError } from '../utils/HttpError';
 import { IConfigService } from '../types/configService.interface';
@@ -15,11 +15,11 @@ import { AuthGuard } from '../middlewares/AuthGuard';
 @injectable()
 export class UserController extends BaseController implements IUserController {
 	constructor(
-		@inject(TYPES.ILogger) private loggerService: ILogger,
-		@inject(TYPES.UserService) private userService: IUserService,
-		@inject(TYPES.ConfigService) private configService: IConfigService,
+		@inject(DiTypes.ILogger) private _loggerService: ILogger,
+		@inject(DiTypes.UserService) private _userService: IUserService,
+		@inject(DiTypes.ConfigService) private _configService: IConfigService,
 	) {
-		super(loggerService);
+		super(_loggerService);
 
 		this.bindRoutes([
 			{
@@ -33,7 +33,7 @@ export class UserController extends BaseController implements IUserController {
 
 	public async getAll(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
 		try {
-			const users: User[] | null = await this.userService.getAll();
+			const users: User[] | null = await this._userService.getAll();
 
 			if (!users) {
 				return next(HttpError.badRequest('Пользователи не найдены'));

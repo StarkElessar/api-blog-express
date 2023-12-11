@@ -2,25 +2,25 @@ import 'reflect-metadata';
 import { inject, injectable } from 'inversify';
 import { Request, Response, NextFunction } from 'express';
 
-import { TYPES } from '../types';
+import { DiTypes } from '../diTypes';
 import { IExeptionFilter } from '../types/exeptionFilter.interface';
 import { ILogger } from '../types/logger.interface';
 import { HttpError } from '../utils/HttpError';
 
 @injectable()
 export class ExeptionFilter implements IExeptionFilter {
-	constructor(@inject(TYPES.ILogger) private logger: ILogger) { }
+	constructor(@inject(DiTypes.ILogger) private _logger: ILogger) { }
 
 	async catch(err: Error | HttpError, req: Request, res: Response, next: NextFunction): Promise<Response | undefined> {
 		if (err instanceof HttpError) {
-			await this.logger.error(`[${err.context}] Ошибка ${err.statusCode}: ${err.message}`);
+			this._logger.error(`[${err.context}] Ошибка ${err.statusCode}: ${err.message}`);
 			return res.status(err.statusCode).json({
 				message: err.message,
 				errors: err.errors
 			});
 		}
 
-		await this.logger.error(`${err.message}`);
+		this._logger.error(`${err.message}`);
 		res.status(500).send({ err: err.message });
 	}
 }

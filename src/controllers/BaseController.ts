@@ -10,7 +10,7 @@ import { IBaseController } from '../types/baseController.interface';
 export abstract class BaseController implements IBaseController {
 	private readonly _router: Router;
 
-	constructor(private logger: ILogger) {
+	constructor(private _logger: ILogger) {
 		this._router = Router();
 	}
 
@@ -38,7 +38,7 @@ export abstract class BaseController implements IBaseController {
 			const pipeline = middlewares ? [...middlewares, handler] : handler;
 
 			this.router[route.method](route.path, pipeline);
-			this.logger.log(`[${route.method}] ${route.path}`);
+			this._logger.log(`[${route.method}] ${route.path}`);
 		}
 	}
 }

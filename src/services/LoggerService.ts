@@ -8,16 +8,13 @@ import { ILogger } from '../types/logger.interface';
 @injectable()
 export class LoggerService implements ILogger {
 	public logger: Logger<Logger<any>>;
-	private readonly logFilePath: string;
 
-	constructor(logFilePath: string) {
+	constructor(private readonly _logFilePath: string) {
 		this.logger = new Logger({
 			stylePrettyLogs: true,
 			type: 'pretty',
 			prettyLogTimeZone: 'local'
 		});
-
-		this.logFilePath = logFilePath;
 	}
 
 	log(...args: unknown[]): void {
@@ -38,12 +35,12 @@ export class LoggerService implements ILogger {
 
 		this.logger[level](...args);
 
-		if (!fs.existsSync(this.logFilePath)) {
-			fs.writeFileSync(this.logFilePath, '');
+		if (!fs.existsSync(this._logFilePath)) {
+			fs.writeFileSync(this._logFilePath, '');
 		}
 
 		try {
-			await fs.promises.appendFile(this.logFilePath, logMessage + '\n');
+			await fs.promises.appendFile(this._logFilePath, logMessage + '\n');
 		} catch (err) {
 			this.logger.error('Failed to write log to file:', err);
 		}

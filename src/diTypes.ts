@@ -1,4 +1,4 @@
-export const TYPES = {
+export const DiTypes = {
 	Application: Symbol.for('Application'),
 	ILogger: Symbol.for('ILogger'),
 	MulterConfig: Symbol.for('MulterConfig'),

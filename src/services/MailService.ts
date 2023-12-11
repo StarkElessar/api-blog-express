@@ -1,22 +1,30 @@
 import 'reflect-metadata';
 import { inject, injectable } from 'inversify';
 import nodemailer, { Transporter } from 'nodemailer';
-import SMTPTransport from 'nodemailer/lib/smtp-transport';
+import { SentMessageInfo } from 'nodemailer/lib/smtp-transport';
 
-import { TYPES } from '../types';
+import { DiTypes } from '../diTypes';
 import { IConfigService } from '../types/configService.interface';
-import { IMailService } from '../types/mailService.interface';
+import { IMailService, SendMailDataType } from '../types/mailService.interface';
 
 @injectable()
 export class MailService implements IMailService {
-	private transporter: Transporter<SMTPTransport.SentMessageInfo>;
+	private _transporter: Transporter<SentMessageInfo>;
+	private readonly _clientUrl: string;
+	private readonly _smtpUser: string;
 
-	constructor(@inject(TYPES.ConfigService) private configService: IConfigService) {
-		this.transporter = nodemailer.createTransport({
-			service: this.configService.get('SMTP_SERVICE'), // указываем сервис, который будет отправлять письмо
+	constructor(@inject(DiTypes.ConfigService) private _configService: IConfigService) {
+		this._clientUrl = this._configService.get('CLIENT_URL');
+		this._smtpUser = this._configService.get('SMTP_USER');
+
+		this._transporter = nodemailer.createTransport({
+			/** указываем сервис, который будет отправлять письмо */
+			service: this._configService.get('SMTP_SERVICE'),
 			auth: {
-				user: this.configService.get('SMTP_USER'), // адрес почты, с которой будет отправляться письмо
-				pass: this.configService.get('SMTP_PASSWORD'), // сгенерированный пароль, после подключения 2-х этапной аутен-ции
+				/** адрес почты, с которой будет отправляться письмо */
+				user: this._smtpUser,
+				/** сгенерированный пароль, после подключения 2-х этапной аутен-ции */
+				pass: this._configService.get('SMTP_PASSWORD'),
 			},
 		});
 	}
@@ -24,38 +32,38 @@ export class MailService implements IMailService {
 	/**
 	 * Метод для отправки письма с активацией:
 	 * */
-	public async sendActivationMail(email: string, link: string): Promise<void> {
-		const apiUrl: string = this.configService.get('API_URL');
-		await this.transporter.sendMail({
-			from: this.configService.get('SMTP_USER'), // кто отправляет письмо
-			to: email, // кому отправить это письмо
-			subject: `Активация аккаунта на ${apiUrl}`, // тема письма
+	public async sendActivationMail({ email, token }: SendMailDataType): Promise<SentMessageInfo> {
+		return this._transporter.sendMail({
+			/** Кто отправляет письмо */
+			from: this._smtpUser,
+			/** Кому отправить письмо */
+			to: email,
+			/** Тема для письма */
+			subject: `Активация аккаунта на ${this._clientUrl}`,
 			text: '',
-			// html разметка для тела письма:
+			/** html разметка для тела письма: */
 			html: `
         <div>
           <h3>Для активации перейдите по ссылке:</h3>
-          <a href="${apiUrl}/api/auth/activate/${link}">активировать аккаунт</a>
+          <a href="${this._clientUrl}/auth/activate?token=${token}">активировать аккаунт</a>
         </div>
 			`,
 		});
 	}
 
 	// TODO: обработать колбек
-	public async sendResetPasswordMail(email: string, link: string): Promise<void> {
-		const apiUrl: string = this.configService.get('API_URL');
-		await this.transporter.sendMail({
-			from: this.configService.get('SMTP_USER'),
+	public async sendResetPasswordMail({ email, token }: SendMailDataType): Promise<SentMessageInfo> {
+		return this._transporter.sendMail({
+			from: this._smtpUser,
 			to: email,
-			subject: `Восстановление пароля для аккаунта на сайте ${apiUrl}`,
+			subject: `Восстановление пароля для аккаунта на сайте ${this._clientUrl}`,
 			text: '',
 			html: `
 				<div>
           <h3>Для восстановления пароля перейдите по ссылке:</h3>
-          <a href="${apiUrl}/api/auth/reset/${link}">восстановить пароль</a>
+          <a href="${this._clientUrl}/auth/reset?token=${token}">восстановить пароль</a>
         </div>
-			`
-		}, (err, info) => {})
-
+			`,
+		});
 	}
 }

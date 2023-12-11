@@ -2,7 +2,7 @@ import { Container, ContainerModule, interfaces } from 'inversify';
 import path from 'path';
 
 import { App } from './App';
-import { TYPES } from './types';
+import { DiTypes } from './diTypes';
 import { IExeptionFilter } from './types/exeptionFilter.interface';
 import { ILogger } from './types/logger.interface';
 import { IUserController } from './types/userController.interface';
@@ -33,27 +33,27 @@ import { ICookieService } from './types/cookieService.interface';
 const logFilePath: string = path.join(__dirname, '../logs.txt');
 
 export const appBindings: ContainerModule = new ContainerModule((bind: interfaces.Bind): void => {
-	bind<ILogger>(TYPES.ILogger).toDynamicValue(() => new LoggerService(logFilePath)).inSingletonScope();
-	bind<IExeptionFilter>(TYPES.ExeptionFilter).to(ExeptionFilter).inSingletonScope();
-	bind<MulterConfig>(TYPES.MulterConfig).to(MulterConfig).inSingletonScope();
-	bind<IAuthController>(TYPES.AuthController).to(AuthController).inSingletonScope();
-	bind<IUserController>(TYPES.UserController).to(UserController).inSingletonScope();
-	bind<IUploadsController>(TYPES.UploadsController).to(UploadsController).inSingletonScope();
-	bind<IUserService>(TYPES.UserService).to(UserService).inSingletonScope();
-	bind<IConfigService>(TYPES.ConfigService).to(ConfigService).inSingletonScope();
-	bind<PrismaService>(TYPES.PrismaService).to(PrismaService).inSingletonScope();
-	bind<ITokenService>(TYPES.TokenService).to(TokenService).inSingletonScope();
-	bind<IMailService>(TYPES.MailService).to(MailService);
-	bind<ICookieService>(TYPES.CookieService).to(CookieService);
-	bind<IUsersRepository>(TYPES.UsersRepository).to(UsersRepository).inSingletonScope();
-	bind<ITokensRepository>(TYPES.TokensRepository).to(TokensRepository).inSingletonScope();
-	bind<App>(TYPES.Application).to(App);
+	bind<ILogger>(DiTypes.ILogger).toDynamicValue(() => new LoggerService(logFilePath)).inSingletonScope();
+	bind<IExeptionFilter>(DiTypes.ExeptionFilter).to(ExeptionFilter).inSingletonScope();
+	bind<MulterConfig>(DiTypes.MulterConfig).to(MulterConfig).inSingletonScope();
+	bind<IAuthController>(DiTypes.AuthController).to(AuthController).inSingletonScope();
+	bind<IUserController>(DiTypes.UserController).to(UserController).inSingletonScope();
+	bind<IUploadsController>(DiTypes.UploadsController).to(UploadsController).inSingletonScope();
+	bind<IUserService>(DiTypes.UserService).to(UserService).inSingletonScope();
+	bind<IConfigService>(DiTypes.ConfigService).to(ConfigService).inSingletonScope();
+	bind<PrismaService>(DiTypes.PrismaService).to(PrismaService).inSingletonScope();
+	bind<ITokenService>(DiTypes.TokenService).to(TokenService).inSingletonScope();
+	bind<IMailService>(DiTypes.MailService).to(MailService);
+	bind<ICookieService>(DiTypes.CookieService).to(CookieService);
+	bind<IUsersRepository>(DiTypes.UsersRepository).to(UsersRepository).inSingletonScope();
+	bind<ITokensRepository>(DiTypes.TokensRepository).to(TokensRepository).inSingletonScope();
+	bind<App>(DiTypes.Application).to(App);
 });
 
 function bootstrap(): { appContainer: Container, app: App } {
 	const appContainer: Container = new Container();
 	appContainer.load(appBindings);
-	const app: App = appContainer.get<App>(TYPES.Application);
+	const app: App = appContainer.get<App>(DiTypes.Application);
 	app.init();
 
 	return { appContainer, app };

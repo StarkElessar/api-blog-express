@@ -3,14 +3,14 @@ import { inject, injectable } from 'inversify';
 import { Request, Response, NextFunction } from 'express';
 
 import { HttpError } from '../utils/HttpError';
-import { TYPES } from '../types';
+import { DiTypes } from '../diTypes';
 import { ILogger } from '../types/logger.interface';
 import { BaseController } from './BaseController';
 import { IUploadsController } from '../types/uploadsController.interface';
 
 @injectable()
 export class UploadsController extends BaseController implements IUploadsController {
-	constructor(@inject(TYPES.ILogger) private loggerService: ILogger) {
+	constructor(@inject(DiTypes.ILogger) loggerService: ILogger) {
 		super(loggerService)
 
 		this.bindRoutes([
