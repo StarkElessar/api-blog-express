@@ -18,7 +18,6 @@ model User {
   lastName       String?
   age            Int?
   isActivated    Boolean  @default(false)
-  activationLink String?  @default(uuid())
   role           String   @default("user")
 
   comments Comment[]
