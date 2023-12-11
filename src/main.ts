@@ -31,6 +31,7 @@ import { CookieService } from './services/CookieService';
 import { ICookieService } from './types/cookieService.interface';
 
 const logFilePath: string = path.join(__dirname, '../logs.txt');
+type BootstrapFuncType = { appContainer: Container, app: App };
 
 export const appBindings: ContainerModule = new ContainerModule((bind: interfaces.Bind): void => {
 	bind<ILogger>(DiTypes.ILogger).toDynamicValue(() => new LoggerService(logFilePath)).inSingletonScope();
@@ -50,7 +51,7 @@ export const appBindings: ContainerModule = new ContainerModule((bind: interface
 	bind<App>(DiTypes.Application).to(App);
 });
 
-function bootstrap(): { appContainer: Container, app: App } {
+function bootstrap(): BootstrapFuncType {
 	const appContainer: Container = new Container();
 	appContainer.load(appBindings);
 	const app: App = appContainer.get<App>(DiTypes.Application);

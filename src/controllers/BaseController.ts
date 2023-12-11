@@ -20,7 +20,7 @@ export abstract class BaseController implements IBaseController {
 
 	public send<T>(res: Response, code: number, message: T): Response {
 		res.type('application/json');
-		return res.status(200).json(message);
+		return res.status(code).json(message);
 	}
 
 	public ok<T>(res: Response, message: T): Response {

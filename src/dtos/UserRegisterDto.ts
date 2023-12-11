@@ -8,6 +8,9 @@ export class UserRegisterDto {
 	@MinLength(5, { message: 'Пароль должен быть минимум 5 символов' })
 	public password: string;
 
+	@MinLength(5, { message: 'Пароль должен быть минимум 5 символов' })
+	public confirmPassword: string;
+
 	public role?: string;
 
 	constructor(model: User = <User>{}) {

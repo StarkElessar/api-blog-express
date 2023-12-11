@@ -32,6 +32,10 @@ export class TokenService implements ITokenService {
 		});
 	}
 
+	public async generateActivateToken(payload: UserForTokensDto): Promise<string> {
+		return this.signJWT(payload, this._configService.get('JWT_ACTIVATE'), '30m');
+	}
+
 	public async generateTokens(payload: UserForTokensDto): Promise<ITokenPair> {
 		const accessToken: string = await this.signJWT(payload, this._configService.get('JWT_ACCESS'), '30m');
 		const refreshToken: string = await this.signJWT(payload, this._configService.get('JWT_REFRESH'), '30d');

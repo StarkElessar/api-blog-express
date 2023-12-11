@@ -1,4 +1,8 @@
+import { SentMessageInfo } from 'nodemailer/lib/smtp-transport';
+
+export type SendMailDataType = { email: string, token: string };
+
 export interface IMailService {
-	sendActivationMail: (email: string, link: string) => Promise<void>;
-	sendResetPasswordMail: (email: string, link: string) => Promise<void>;
+	sendActivationMail: (data: SendMailDataType) => Promise<SentMessageInfo>;
+	sendResetPasswordMail: (data: SendMailDataType) => Promise<SentMessageInfo>;
 }

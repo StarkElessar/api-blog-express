@@ -19,10 +19,11 @@ import { UserForTokensDto } from '../dtos/UserForTokensDto';
 import { IMailService } from '../types/mailService.interface';
 import { ICookieService } from '../types/cookieService.interface';
 import { IUserData } from '../types/user.interface';
-import { UserResponseDto } from '../dtos/UserResponseDto';
 import { AuthGuard } from '../middlewares/AuthGuard';
 import { UserUpdatePasswordDto } from '../dtos/UserUpdatePasswordDto';
 import { UserDto } from '../dtos/UserDto';
+import { EmailValidationDto } from '../dtos/EmailValidationDto';
+import { ITokenParams } from '../types';
 
 @injectable()
 export class AuthController extends BaseController implements IAuthController {
@@ -43,18 +44,49 @@ export class AuthController extends BaseController implements IAuthController {
 				func: this.register,
 				middlewares: [ new ValidateMiddleware(UserRegisterDto) ]
 			},
-			{ path: '/login', method: 'post', func: this.login },
-			{ path: '/activate/:link', method: 'get', func: <any>this.activate },
+			{
+				path: '/login',
+				method: 'post',
+				func: this.login,
+				middlewares: [ new ValidateMiddleware(UserLoginDto) ]
+			},
+			{
+				path: '/activate/:token',
+				method: 'get',
+				func: this.activate
+			},
+			{
+				path: '/request-activation-link',
+				method: 'post',
+				func: this.requestActivationLink,
+				middlewares: [ new ValidateMiddleware(EmailValidationDto) ]
+			},
 			{
 				path: '/get-current-user',
 				method: 'get',
 				func: this.getCurrentUser,
 				middlewares: [ new AuthGuard() ]
 			},
-			{ path: '/logout', method: 'get', func: this.logout },
-			{ path: '/refresh', method: 'get', func: this.refresh },
-			{ path: '/reset', method: 'post', func: this.sendPasswordResetLink },
-			{ path: '/reset/:token', method: 'get', func: <any>this.resetPassword },
+			{
+				path: '/logout',
+				method: 'get',
+				func: this.logout
+			},
+			{
+				path: '/refresh',
+				method: 'get',
+				func: this.refresh
+			},
+			{
+				path: '/reset',
+				method: 'post',
+				func: this.sendPasswordResetLink
+			},
+			{
+				path: '/reset/:token',
+				method: 'get',
+				func: this.resetPassword
+			},
 			{
 				path: '/password-reset',
 				method: 'post',
@@ -65,37 +97,37 @@ export class AuthController extends BaseController implements IAuthController {
 	}
 
 	/**
-	 * @route POST api/auth/register
-	 * @desc Регистрация
+	 * @route POST: api/auth/register
+	 * @desc Регистрация пользователя
 	 * @access Public
 	 */
-	public async register({ body }: Request<{}, {}, UserRegisterDto>, res: Response, next: NextFunction): Promise<Response | void> {
+	public async register(req: Request<{}, {}, UserRegisterDto>, res: Response, next: NextFunction): Promise<Response | void> {
 		try {
-			const candidate: User = await this.userService.createUser(body);
-			const userData: UserResponseDto = new UserResponseDto(candidate);
-			const tokens: ITokenPair = await this.tokenService.generateTokens({ id: candidate.id });
+			const user: User = await this._userService.createUser(req.body);
+			const dataForToken = new UserForTokensDto(user);
+			const activateToken = await this._tokenService.generateActivateToken(dataForToken);
+			const result = await this._mailService.sendActivationMail({ email: user.email, token: activateToken });
 
-			await this.tokenService.updateToken(candidate.id, tokens.refreshToken);
-			await this.mailService.sendActivationMail(candidate.email, <string>candidate.activationLink);
-			this.cookieService.save(res, 'refreshToken', tokens.refreshToken);
+			// TODO: сделать адекватную обработку, после отправки письма:
+			console.log(result);
 
-			this.ok(res, { user: userData, ...tokens });
+			this.send(res, 201, { message: 'Пользователь создан. Письмо для активации отправлено на почту', email: user.email });
 		} catch (error) {
 			next(error);
 		}
 	}
 
 	/**
-	 * @route POST api/auth/login
+	 * @route POST: api/auth/login
 	 * @desc Авторизация
 	 * @access Public
 	 */
 	public async login({ body }: Request<{}, {}, UserLoginDto>, res: Response, next: NextFunction): Promise<Response | void> {
 		try {
-			const candidate: UserForTokensDto = await this.userService.validateUser(body);
-			const tokens: ITokenPair = await this.tokenService.generateTokens(candidate);
-			await this.tokenService.updateToken(candidate.id, tokens.refreshToken);
-			this.cookieService.save(res, 'refreshToken', tokens.refreshToken);
+			const candidate: UserForTokensDto = await this._userService.validateUser(body);
+			const tokens: ITokenPair = await this._tokenService.generateTokens(candidate);
+			await this._tokenService.updateToken(candidate.id, tokens.refreshToken);
+			this._cookieService.save(res, 'refreshToken', tokens.refreshToken);
 
 			this.ok(res, { user: candidate, ...tokens });
 		} catch (error) {
@@ -104,24 +136,51 @@ export class AuthController extends BaseController implements IAuthController {
 	}
 
 	/**
-	 * @route GET api/auth/activate/:link
+	 * @route GET: api/auth/activate/:token
 	 * @desc Активация аккаунта
 	 * @access Public
 	 */
-	public async activate(req: Request<{ link: string }>, res: Response, next: NextFunction): Promise<void> {
+	public async activate(req: Request<ITokenParams>, res: Response, next: NextFunction): Promise<void> {
 		try {
-			const activationLink: string = req.params.link;
-			await this.userService.activate(activationLink);
+			const token = req.params.token;
+			const secret = this._configService.get('JWT_ACTIVATE');
+			const { id } = await this._tokenService.validateToken(token, secret);
 
-			return res.redirect(this.configService.get('CLIENT_URL'));
+			await this._userService.activate(id);
+			this.ok(res, { message: 'Аккаунт успешно активирован' });
 		} catch (error) {
 			next(error);
 		}
 	}
 
+	/**
+	 * @route POST: api/auth/request-activation-link
+	 * @desc Повторный запрос на отправку письма для активации аккаунта
+	 * @access Public
+	 * */
+	public async requestActivationLink({ body }: Request<{}, {}, EmailValidationDto>, res: Response, next: NextFunction) {
+		try {
+			const email = body.email;
+			const { id } = await this._userService.validateUserForRequestActivationLink(email);
+			const token = await this._tokenService.generateActivateToken({ id });
+			const result = await this._mailService.sendActivationMail({ email, token });
+
+			console.log(result);
+
+			this.ok(res, { message: 'Письмо для активации успешно отправлено на почтовый адрес ' + email });
+		} catch (error) {
+			next(error);
+		}
+	}
+
+	/**
+	 * @route GET: api/auth/get-current-user
+	 * @desc Получить данные текущего авторизированного пользователя
+	 * @access Private
+	 * */
 	public async getCurrentUser(req: Request, res: Response, next: NextFunction): Promise<void> {
 		try {
-			const user: UserDto = await this.userService.getCurrentUser(req.user);
+			const user: UserDto = await this._userService.getCurrentUser(req.user);
 			this.ok(res, user);
 		} catch (error) {
 			next(error);
@@ -129,7 +188,7 @@ export class AuthController extends BaseController implements IAuthController {
 	}
 
 	/**
-	 * @route GET api/auth/logout
+	 * @route GET: api/auth/logout
 	 * @desc Выход из аккаунта
 	 * @access Public
 	 * */
@@ -146,7 +205,7 @@ export class AuthController extends BaseController implements IAuthController {
 	}
 
 	/**
-	 * @route GET api/auth/refresh
+	 * @route GET: api/auth/refresh
 	 * @desc Обновление refresh токена
 	 * @access Public
 	 * */
@@ -163,21 +222,27 @@ export class AuthController extends BaseController implements IAuthController {
 	}
 
 	/**
-	 * @route POST api/auth/reset
+	 * @route POST: api/auth/reset
 	 * @desc Запрос на восстановление пароля
 	 * @access Public
 	 * */
-	public async sendPasswordResetLink({ body }: Request<{}, {}, {
-		email: string
-	}>, res: Response, next: NextFunction): Promise<void> {
+	public async sendPasswordResetLink({ body }: Request<{}, {}, { email: string }>, res: Response, next: NextFunction): Promise<void> {
+		const email = body.email;
+
 		try {
-			const resetToken: Token | null = await this.userService.sendPasswordResetLink(body.email);
+			const resetToken: Token | null = await this._userService.sendPasswordResetLink(email);
 
 			if (!resetToken) {
 				return next(HttpError.badRequest('Не удалось создать ссылку для восстановления пароля'));
 			}
 
-			await this.mailService.sendResetPasswordMail(body.email, resetToken.refreshToken);
+			const result = await this._mailService.sendResetPasswordMail({
+				email,
+				token: resetToken.refreshToken
+			});
+
+			// TODO: сделать адекватную обработку, после отправки письма:
+			console.log(result);
 			this.ok(res, { message: 'Письмо для восстановления пароля отправлено на почту' });
 		} catch (error) {
 			next(error);
@@ -185,11 +250,11 @@ export class AuthController extends BaseController implements IAuthController {
 	}
 
 	/**
-	 * @route GET api/auth/reset/:link
+	 * @route GET: api/auth/reset/:link
 	 * @desc Сброс пароля
 	 * @access Public
 	 * */
-	public async resetPassword(req: Request<{ token: string }>, res: Response, next: NextFunction): Promise<void> {
+	public async resetPassword(req: Request<ITokenParams>, res: Response, next: NextFunction): Promise<void> {
 		try {
 			const resetToken: string = req.params.token;
 
@@ -197,31 +262,36 @@ export class AuthController extends BaseController implements IAuthController {
 				return next(HttpError.badRequest('Некорректная ссылка восстановления'));
 			}
 
-			const user: User = await this.userService.resetPassword(resetToken);
+			const user: User = await this._userService.resetPassword(resetToken);
 
 			if (!user.isActivated) {
 				return next(HttpError.badRequest('Аккаунт не активирован'));
 			}
 
-			return res.redirect(this.configService.get('CLIENT_URL') + `/auth/reset?token=${resetToken}`);
+			return res.redirect(this._configService.get('CLIENT_URL') + `/auth/reset?token=${ resetToken }`);
 		} catch (error) {
 			next(error);
 		}
 	}
 
+	/**
+	 * @route POST: api/auth/password-reset
+	 * @desc Обновить пароль пользователя после сброса
+	 * @access Private
+	 * */
 	public async updatePasswordAfterReset(req: Request<{}, {}, UserUpdatePasswordDto>, res: Response, next: NextFunction): Promise<void> {
 		try {
 			if (req.body.password !== req.body.confirmPassword) {
 				next(HttpError.unprocessableEntity('updatePasswordAfterReset', 'Пароли не совпадают'));
 			}
 
-			const userData: User | null = await this.userService.updatePassword(req.user, req.body.password);
+			const userData: User | null = await this._userService.updatePassword(req.user, req.body.password);
 
 			if (!userData) {
 				return next(HttpError.badRequest('Не удалось обновить пароль'));
 			}
 
-			// TODO: сделать редирект на логин.
+			// TODO: сделать редирект на логин или вообще пусть фронт редиректит куда нужно..?
 			this.ok(res, { message: 'Пароль успешно обновлён' });
 		} catch (error) {
 			next(error);
