@@ -7,28 +7,19 @@ import { IExeptionFilter } from './types/exeptionFilter.interface';
 import { ILogger } from './types/logger.interface';
 import { IUserController } from './types/userController.interface';
 import { IAuthController } from './types/authController.interface';
-import { LoggerService } from './services/LoggerService';
-import { ExeptionFilter } from './middlewares/ExeptionFilter';
-import { UserController } from './controllers/UsersController';
-import { AuthController } from './controllers/AuthController';
-import { UploadsController } from './controllers/UploadsController';
 import { IUploadsController } from './types/uploadsController.interface';
-import { MulterConfig } from './utils/MulterConfig';
 import { IUserService } from './types/userService.interface';
-import { UserService } from './services/UserService';
 import { IConfigService } from './types/configService.interface';
-import { ConfigService } from './services/ConfigService';
-import { PrismaService } from './services/PrismaService';
-import { UsersRepository } from './repositories/UsersRepository';
 import { IUsersRepository } from './types/usersRrepository.interface';
 import { ITokenService } from './types/tokenService.interface';
-import { TokenService } from './services/TokenService';
 import { ITokensRepository } from './types/tokensRepository.interface';
-import { TokensRepository } from './repositories/TokensRepository';
-import { MailService } from './services/MailService';
 import { IMailService } from './types/mailService.interface';
-import { CookieService } from './services/CookieService';
 import { ICookieService } from './types/cookieService.interface';
+import { ExeptionFilter } from './middlewares/ExeptionFilter';
+import { MulterConfig } from './utils/MulterConfig';
+import { LoggerService, CookieService, ConfigService, UserService, MailService, PrismaService, TokenService } from './services';
+import { UserController, UploadsController, AuthController } from './controllers';
+import { UsersRepository, TokensRepository } from './repositories';
 
 const logFilePath: string = path.join(__dirname, '../logs.txt');
 type BootstrapFuncType = { appContainer: Container, app: App };
@@ -44,11 +35,11 @@ export const appBindings: ContainerModule = new ContainerModule((bind: interface
 	bind<IConfigService>(DiTypes.ConfigService).to(ConfigService).inSingletonScope();
 	bind<PrismaService>(DiTypes.PrismaService).to(PrismaService).inSingletonScope();
 	bind<ITokenService>(DiTypes.TokenService).to(TokenService).inSingletonScope();
-	bind<IMailService>(DiTypes.MailService).to(MailService);
-	bind<ICookieService>(DiTypes.CookieService).to(CookieService);
+	bind<IMailService>(DiTypes.MailService).to(MailService).inSingletonScope();
+	bind<ICookieService>(DiTypes.CookieService).to(CookieService).inSingletonScope();
 	bind<IUsersRepository>(DiTypes.UsersRepository).to(UsersRepository).inSingletonScope();
 	bind<ITokensRepository>(DiTypes.TokensRepository).to(TokensRepository).inSingletonScope();
-	bind<App>(DiTypes.Application).to(App);
+	bind<App>(DiTypes.Application).to(App).inSingletonScope();
 });
 
 function bootstrap(): BootstrapFuncType {

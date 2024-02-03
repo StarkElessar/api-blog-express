@@ -4,12 +4,14 @@ import { sign, verify } from 'jsonwebtoken';
 import { Token } from '@prisma/client';
 
 import { HttpError } from '../utils/HttpError';
-import { UserForTokensDto } from '../dtos/UserForTokensDto';
 import { ITokenService } from '../types/tokenService.interface';
 import { DiTypes } from '../diTypes';
 import { IConfigService } from '../types/configService.interface';
 import { TokensRepository } from '../repositories/TokensRepository';
 import { ITokenPair } from '../types/tokenPair';
+import { BaseDto } from '../dtos/BaseDto';
+import { GenerateTokenDto } from '../dtos/GenerateTokenDto';
+import { TokenWithUserDataType } from '../types';
 
 
 @injectable()
@@ -20,9 +22,9 @@ export class TokenService implements ITokenService {
 	) {
 	}
 
-	private signJWT(payload: UserForTokensDto, secret: string, expires: string | number): Promise<string> {
+	public async generateToken<T extends GenerateTokenDto>({ expires, secretKey, payload }: T): Promise<string> {
 		return new Promise((resolve, reject): void => {
-			sign({ ...payload }, secret, { algorithm: 'HS256', expiresIn: expires }, (err, token) => {
+			sign({ ...payload }, secretKey, { algorithm: 'HS256', expiresIn: expires }, (err, token) => {
 				if (err) {
 					reject(err);
 				}
@@ -32,13 +34,18 @@ export class TokenService implements ITokenService {
 		});
 	}
 
-	public async generateActivateToken(payload: UserForTokensDto): Promise<string> {
-		return this.signJWT(payload, this._configService.get('JWT_ACTIVATE'), '30m');
-	}
+	public async generateTokens(id: number): Promise<ITokenPair> {
+		const accessToken = await this.generateToken(new GenerateTokenDto({
+			expires: '30m',
+			secretKey: this._configService.get('JWT_ACCESS'),
+			payload: { id }
+		}));
 
-	public async generateTokens(payload: UserForTokensDto): Promise<ITokenPair> {
-		const accessToken: string = await this.signJWT(payload, this._configService.get('JWT_ACCESS'), '30m');
-		const refreshToken: string = await this.signJWT(payload, this._configService.get('JWT_REFRESH'), '30d');
+		const refreshToken = await this.generateToken(new GenerateTokenDto({
+			expires: '30d',
+			secretKey: this._configService.get('JWT_REFRESH'),
+			payload: { id }
+		}));
 
 		return {
 			accessToken,
@@ -46,11 +53,7 @@ export class TokenService implements ITokenService {
 		};
 	}
 
-	public async generateResetToken(payload: UserForTokensDto): Promise<string> {
-		return this.signJWT(payload, this._configService.get('JWT_ACCESS'), '10m');
-	}
-
-	public validateToken(token: string, secretKey: string): Promise<UserForTokensDto> {
+	public validateToken(token: string, secretKey: string): Promise<BaseDto> {
 		return new Promise((resolve, reject) => {
 			verify(token, secretKey, (err, decoded) => {
 				if (err) {
@@ -67,7 +70,7 @@ export class TokenService implements ITokenService {
 					}
 				}
 
-				resolve(<UserForTokensDto>decoded);
+				resolve(<BaseDto>decoded);
 			})
 		});
 	}
@@ -87,7 +90,7 @@ export class TokenService implements ITokenService {
 			throw HttpError.unAuthorizedError('logout');
 		}
 
-		const data: Token | null = await this._tokensRepository.findByToken(refreshToken);
+		const data: TokenWithUserDataType | null = await this._tokensRepository.findByToken(refreshToken);
 
 		if (!data) {
 			throw HttpError.badRequest('Токен не найден');

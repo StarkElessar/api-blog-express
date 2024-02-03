@@ -2,7 +2,7 @@ import { verify } from 'jsonwebtoken';
 import { NextFunction, Request, Response } from 'express';
 
 import { IMiddleware } from '../types/middleware.interface';
-import { UserForTokensDto } from '../dtos/UserForTokensDto';
+import { BaseDto } from '../dtos/BaseDto';
 
 export class AuthMiddleware implements IMiddleware {
 	constructor(private _secret: string) {}
@@ -17,7 +17,7 @@ export class AuthMiddleware implements IMiddleware {
 				}
 
 				if (payload) {
-					req.user = (<UserForTokensDto>payload).id;
+					req.user = (<BaseDto>payload).id;
 					return next();
 				}
 			});

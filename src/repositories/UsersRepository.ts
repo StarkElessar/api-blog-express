@@ -28,7 +28,10 @@ export class UsersRepository implements IUsersRepository {
 	// TODO: переименовать на 'getById'
 	public async findOneById(id: number): Promise<User | null> {
 		return this._prismaService.client.user.findUnique({
-			where: { id }
+			where: { id },
+			include: {
+				tokens: true,
+			},
 		});
 	}
 

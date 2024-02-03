@@ -1,15 +1,15 @@
 import 'reflect-metadata';
 import { inject, injectable } from 'inversify';
-import { Token } from '@prisma/client';
+import { Token, TokenPayload } from '@prisma/client';
 
 import { DiTypes } from '../diTypes';
 import { PrismaService } from '../services/PrismaService';
 import { ITokensRepository } from '../types/tokensRepository.interface';
+import { TokenWithUserDataType } from '../types';
 
 @injectable()
 export class TokensRepository implements ITokensRepository {
-	constructor(@inject(DiTypes.PrismaService) private _prismaService: PrismaService) {
-	}
+	constructor(@inject(DiTypes.PrismaService) private _prismaService: PrismaService) {}
 
 	public create(userId: number, token: string): Promise<Token | null> {
 		return this._prismaService.client.token.create({ data: { userId, refreshToken: token } });
@@ -30,7 +30,10 @@ export class TokensRepository implements ITokensRepository {
 		return this._prismaService.client.token.findFirst({ where: { userId } });
 	}
 
-	public findByToken(token: string): Promise<Token | null> {
-		return this._prismaService.client.token.findFirst({ where: { refreshToken: token } });
+	public findByToken(token: string): Promise<TokenWithUserDataType | null> {
+		return this._prismaService.client.token.findFirst({
+			where: { refreshToken: token },
+			include: { user: true }
+		});
 	}
 }

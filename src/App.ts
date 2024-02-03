@@ -17,7 +17,7 @@ import { IUserController } from './types/userController.interface';
 import { IAuthController } from './types/authController.interface';
 import { IUploadsController } from './types/uploadsController.interface';
 import { IConfigService } from './types/configService.interface';
-import { PrismaService } from './services/PrismaService';
+import { PrismaService } from './services';
 import { AuthMiddleware } from './middlewares/AuthMiddleware';
 
 @injectable()
@@ -29,7 +29,7 @@ export class App {
 
 	constructor(
 		@inject(DiTypes.ILogger) private _logger: ILogger,
-		@inject(DiTypes.ExeptionFilter) private _exeptionFilter: IExeptionFilter,
+		@inject(DiTypes.ExeptionFilter) private _exceptionFilter: IExeptionFilter,
 		@inject(DiTypes.MulterConfig) private _multerConfig: MulterConfig,
 		@inject(DiTypes.AuthController) private _authController: IAuthController,
 		@inject(DiTypes.UserController) private _userController: IUserController,
@@ -55,7 +55,8 @@ export class App {
 		this.app.use(logger('dev'));
 		this.app.use(cookieParser())
 		this.app.use(cors({ credentials: true, origin: process.env.CLIENT_URL }))
-		this.app.use(express.json());
+		this.app.use(express.json({ limit: '10mb' }));
+		this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 		const authMiddleware = new AuthMiddleware(this._configService.get('JWT_ACCESS'));
 		this.app.use(authMiddleware.execute.bind(authMiddleware));
@@ -77,7 +78,7 @@ export class App {
 	}
 
 	public useExeptionFilters(): void {
-		this.app.use(this._exeptionFilter.catch.bind(this._exeptionFilter));
+		this.app.use(this._exceptionFilter.catch.bind(this._exceptionFilter));
 	}
 
 	/**
@@ -90,7 +91,9 @@ export class App {
 
 		await this._prismaService.connect();
 
-		this.server = this.app.listen(this.port);
-		this._logger.log(`Сервер запущен на http://localhost:${this.port}`);
+		this.server = this.app.listen(this.port, () => {
+			this._logger.log(`Сервер запущен на http://localhost:${this.port}`);
+		});
+		this.server.maxConnections = 10000;
 	}
 }

@@ -1,13 +1,13 @@
 import { Token } from '@prisma/client';
 
-import { UserForTokensDto } from '../dtos/UserForTokensDto';
 import { ITokenPair } from './tokenPair';
+import { GenerateTokenDto } from '../dtos/GenerateTokenDto';
+import { BaseDto } from '../dtos/BaseDto';
 
 export interface ITokenService {
-	generateTokens: (payload: UserForTokensDto) => Promise<ITokenPair>;
-	generateResetToken: (payload: UserForTokensDto) => Promise<string>;
-	generateActivateToken: (payload: UserForTokensDto) => Promise<string>;
-	validateToken: (token: string, secretKey: string) => Promise<UserForTokensDto>;
+	generateToken<T extends GenerateTokenDto>(payload: T): Promise<string>;
+	generateTokens: (id: number) => Promise<ITokenPair>;
+	validateToken: (token: string, secretKey: string) => Promise<BaseDto>;
 	updateToken: (userId: number, refreshToken: string) => Promise<Token | null>;
 	removeToken: (refreshToken: string) => Promise<Token>;
 }

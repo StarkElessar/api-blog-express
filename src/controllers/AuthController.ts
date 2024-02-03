@@ -14,8 +14,6 @@ import { IUserService } from '../types/userService.interface';
 import { HttpError } from '../utils/HttpError';
 import { ITokenService } from '../types/tokenService.interface';
 import { IConfigService } from '../types/configService.interface';
-import { ITokenPair } from '../types/tokenPair';
-import { UserForTokensDto } from '../dtos/UserForTokensDto';
 import { IMailService } from '../types/mailService.interface';
 import { ICookieService } from '../types/cookieService.interface';
 import { IUserData } from '../types/user.interface';
@@ -24,6 +22,7 @@ import { UserUpdatePasswordDto } from '../dtos/UserUpdatePasswordDto';
 import { UserDto } from '../dtos/UserDto';
 import { EmailValidationDto } from '../dtos/EmailValidationDto';
 import { ITokenParams } from '../types';
+import { GenerateTokenDto } from '../dtos/GenerateTokenDto';
 
 @injectable()
 export class AuthController extends BaseController implements IAuthController {
@@ -101,17 +100,22 @@ export class AuthController extends BaseController implements IAuthController {
 	 * @desc Регистрация пользователя
 	 * @access Public
 	 */
-	public async register(req: Request<{}, {}, UserRegisterDto>, res: Response, next: NextFunction): Promise<Response | void> {
+	public async register(req: Request<{}, {}, UserRegisterDto>, res: Response, next: NextFunction) {
 		try {
-			const user: User = await this._userService.createUser(req.body);
-			const dataForToken = new UserForTokensDto(user);
-			const activateToken = await this._tokenService.generateActivateToken(dataForToken);
-			const result = await this._mailService.sendActivationMail({ email: user.email, token: activateToken });
+			const { id, email }: User = await this._userService.createUser(req.body);
+			const token = await this._tokenService.generateToken(new GenerateTokenDto({
+				payload: { id },
+				expires: '60m',
+				secretKey: this._configService.get('JWT_ACTIVATE')
+			}));
+
+			//TODO: поискать сервис для проверки существующих email(почитать за гугл, он 100% должен проверять эти вещи)
+			const result = await this._mailService.sendActivationMail({ email, token });
 
 			// TODO: сделать адекватную обработку, после отправки письма:
 			console.log(result);
 
-			this.send(res, 201, { message: 'Пользователь создан. Письмо для активации отправлено на почту', email: user.email });
+			this.send(res, 201, { message: 'Пользователь создан. Письмо для активации отправлено на почту', email });
 		} catch (error) {
 			next(error);
 		}
@@ -122,14 +126,15 @@ export class AuthController extends BaseController implements IAuthController {
 	 * @desc Авторизация
 	 * @access Public
 	 */
-	public async login({ body }: Request<{}, {}, UserLoginDto>, res: Response, next: NextFunction): Promise<Response | void> {
+	public async login({ body }: Request<{}, {}, UserLoginDto>, res: Response, next: NextFunction) {
 		try {
-			const candidate: UserForTokensDto = await this._userService.validateUser(body);
-			const tokens: ITokenPair = await this._tokenService.generateTokens(candidate);
-			await this._tokenService.updateToken(candidate.id, tokens.refreshToken);
-			this._cookieService.save(res, 'refreshToken', tokens.refreshToken);
+			const candidate = await this._userService.validateUser(body);
+			const { accessToken, refreshToken } = await this._tokenService.generateTokens(candidate.id);
 
-			this.ok(res, { user: candidate, ...tokens });
+			await this._tokenService.updateToken(candidate.id, refreshToken);
+			this._cookieService.save(res, 'refreshToken', refreshToken);
+
+			this.ok(res, { user: candidate, accessToken });
 		} catch (error) {
 			next(error);
 		}
@@ -140,7 +145,7 @@ export class AuthController extends BaseController implements IAuthController {
 	 * @desc Активация аккаунта
 	 * @access Public
 	 */
-	public async activate(req: Request<ITokenParams>, res: Response, next: NextFunction): Promise<void> {
+	public async activate(req: Request<ITokenParams>, res: Response, next: NextFunction) {
 		try {
 			const token = req.params.token;
 			const secret = this._configService.get('JWT_ACTIVATE');
@@ -162,7 +167,11 @@ export class AuthController extends BaseController implements IAuthController {
 		try {
 			const email = body.email;
 			const { id } = await this._userService.validateUserForRequestActivationLink(email);
-			const token = await this._tokenService.generateActivateToken({ id });
+			const token = await this._tokenService.generateToken(new GenerateTokenDto({
+				secretKey: this._configService.get('JWT_ACTIVATE'),
+				expires: '60m',
+				payload: { id }
+			}));
 			const result = await this._mailService.sendActivationMail({ email, token });
 
 			console.log(result);
@@ -178,7 +187,7 @@ export class AuthController extends BaseController implements IAuthController {
 	 * @desc Получить данные текущего авторизированного пользователя
 	 * @access Private
 	 * */
-	public async getCurrentUser(req: Request, res: Response, next: NextFunction): Promise<void> {
+	public async getCurrentUser(req: Request, res: Response, next: NextFunction) {
 		try {
 			const user: UserDto = await this._userService.getCurrentUser(req.user);
 			this.ok(res, user);
@@ -209,7 +218,7 @@ export class AuthController extends BaseController implements IAuthController {
 	 * @desc Обновление refresh токена
 	 * @access Public
 	 * */
-	public async refresh(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
+	public async refresh(req: Request, res: Response, next: NextFunction) {
 		try {
 			const { refreshToken } = req.cookies;
 			const userData: IUserData = await this._userService.refresh(refreshToken);
@@ -226,7 +235,7 @@ export class AuthController extends BaseController implements IAuthController {
 	 * @desc Запрос на восстановление пароля
 	 * @access Public
 	 * */
-	public async sendPasswordResetLink({ body }: Request<{}, {}, { email: string }>, res: Response, next: NextFunction): Promise<void> {
+	public async sendPasswordResetLink({ body }: Request<{}, {}, { email: string }>, res: Response, next: NextFunction) {
 		const email = body.email;
 
 		try {
@@ -254,7 +263,7 @@ export class AuthController extends BaseController implements IAuthController {
 	 * @desc Сброс пароля
 	 * @access Public
 	 * */
-	public async resetPassword(req: Request<ITokenParams>, res: Response, next: NextFunction): Promise<void> {
+	public async resetPassword(req: Request<ITokenParams>, res: Response, next: NextFunction) {
 		try {
 			const resetToken: string = req.params.token;
 
@@ -279,7 +288,7 @@ export class AuthController extends BaseController implements IAuthController {
 	 * @desc Обновить пароль пользователя после сброса
 	 * @access Private
 	 * */
-	public async updatePasswordAfterReset(req: Request<{}, {}, UserUpdatePasswordDto>, res: Response, next: NextFunction): Promise<void> {
+	public async updatePasswordAfterReset(req: Request<{}, {}, UserUpdatePasswordDto>, res: Response, next: NextFunction) {
 		try {
 			if (req.body.password !== req.body.confirmPassword) {
 				next(HttpError.unprocessableEntity('updatePasswordAfterReset', 'Пароли не совпадают'));

@@ -4,7 +4,6 @@ import { hash } from 'bcrypt';
 import { Token, User } from '@prisma/client';
 
 import { HttpError } from '../utils/HttpError';
-import { UserForTokensDto } from '../dtos/UserForTokensDto';
 import { UserRegisterDto } from '../dtos/UserRegisterDto';
 import { UserLoginDto } from '../dtos/UserLoginDto';
 import { UserEntity } from '../entities/UserEntity';
@@ -14,10 +13,12 @@ import { IConfigService } from '../types/configService.interface';
 import { IUsersRepository } from '../types/usersRrepository.interface';
 import { ITokenService } from '../types/tokenService.interface';
 import { ITokensRepository } from '../types/tokensRepository.interface';
-import { ITokenPair } from '../types/tokenPair';
 import { IUserData } from '../types/user.interface';
 import { UserResponseDto } from '../dtos/UserResponseDto';
 import { UserDto } from '../dtos/UserDto';
+import { BaseDto } from '../dtos/BaseDto';
+import { GenerateTokenDto } from '../dtos/GenerateTokenDto';
+import { TokenWithUserDataType } from '../types';
 
 @injectable()
 export class UserService implements IUserService {
@@ -47,7 +48,7 @@ export class UserService implements IUserService {
 		return this._usersRepository.create(newUser);
 	}
 
-	public async validateUser({ email, password }: UserLoginDto): Promise<UserForTokensDto> {
+	public async validateUser({ email, password }: UserLoginDto): Promise<BaseDto> {
 		const existedUser: User | null = await this._usersRepository.findOneByEmail(email);
 
 		if (!existedUser) {
@@ -61,7 +62,7 @@ export class UserService implements IUserService {
 			throw HttpError.badRequest('Неверный пароль');
 		}
 
-		return new UserForTokensDto(existedUser);
+		return new BaseDto(existedUser.id);
 	}
 
 	// TODO: подумать, может быть не правильное название у метода?
@@ -99,25 +100,21 @@ export class UserService implements IUserService {
 		}
 
 		const secretKey: string = this._configService.get('JWT_REFRESH');
-		const userData: UserForTokensDto | null = await this._tokenService.validateToken(refreshToken, secretKey);
-		const tokenFromDB: Token | null = await this._tokensRepository.findByToken(refreshToken);
+		const userData: BaseDto | null = await this._tokenService.validateToken(refreshToken, secretKey);
+		const tokenFromDB: TokenWithUserDataType | null = await this._tokensRepository.findByToken(refreshToken);
 
 		if (!userData || !tokenFromDB) {
 			throw HttpError.unAuthorizedError('refresh');
 		}
 
-		const user: User | null = await this._usersRepository.findOneById(userData.id);
+		const { accessToken, refreshToken: newRefreshToken } = await this._tokenService.generateTokens(userData.id);
+		await this._tokenService.updateToken(userData.id, newRefreshToken);
 
-		if (!user) {
-			throw HttpError.badRequest('Пользователь не найден');
-		}
-
-		const userDataForTokens: UserForTokensDto = new UserForTokensDto(user);
-		const userDataResponse: UserResponseDto = new UserResponseDto(user);
-		const tokens: ITokenPair = await this._tokenService.generateTokens(userDataForTokens);
-		await this._tokenService.updateToken(userDataForTokens.id, tokens.refreshToken);
-
-		return { ...tokens, user: userDataResponse };
+		return {
+			accessToken,
+			refreshToken: newRefreshToken,
+			user: new UserResponseDto(tokenFromDB.user)
+		};
 	}
 
 	public async sendPasswordResetLink(email: string): Promise<Token | null> {
@@ -127,14 +124,18 @@ export class UserService implements IUserService {
 			throw HttpError.badRequest('Пользователь с таким email не найден');
 		}
 
-		const userDataForTokens: UserForTokensDto = new UserForTokensDto(existedUser);
-		const resetToken: string = await this._tokenService.generateResetToken(userDataForTokens);
+		const resetToken: string = await this._tokenService.generateToken(new GenerateTokenDto({
+			payload: { id: existedUser.id },
+			expires: '5m',
+			// TODO: создать другой секретный ключ для этого токена
+			secretKey: this._configService.get('JWT_ACCESS')
+		}));
 		return this._tokensRepository.update(existedUser.id, resetToken);
 	}
 
 	public async resetPassword(token: string): Promise<User> {
 		const secretKey: string = this._configService.get('JWT_ACCESS');
-		const userData: UserForTokensDto = await this._tokenService.validateToken(token, secretKey);
+		const userData = await this._tokenService.validateToken(token, secretKey);
 		const existedUser: User | null = await this._usersRepository.findOneById(userData.id);
 
 		if (!existedUser) {
@@ -156,6 +157,7 @@ export class UserService implements IUserService {
 		return this._usersRepository.update(userId, { password: newHashPassword });
 	}
 
+	//TODO: переименовать в getUserById
 	public async getCurrentUser(userId: number): Promise<UserDto> {
 		const userData: User | null = await this._usersRepository.findOneById(userId);
 

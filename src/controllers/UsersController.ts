@@ -15,11 +15,11 @@ import { AuthGuard } from '../middlewares/AuthGuard';
 @injectable()
 export class UserController extends BaseController implements IUserController {
 	constructor(
-		@inject(DiTypes.ILogger) private _loggerService: ILogger,
+		@inject(DiTypes.ILogger) loggerService: ILogger,
 		@inject(DiTypes.UserService) private _userService: IUserService,
 		@inject(DiTypes.ConfigService) private _configService: IConfigService,
 	) {
-		super(_loggerService);
+		super(loggerService);
 
 		this.bindRoutes([
 			{
@@ -34,11 +34,12 @@ export class UserController extends BaseController implements IUserController {
 	public async getAll(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
 		try {
 			const users: User[] | null = await this._userService.getAll();
-
+			// TODO: наверное не правильно бросать ошибку если нет пользователей...?
 			if (!users) {
 				return next(HttpError.badRequest('Пользователи не найдены'));
 			}
 
+			// TODO: может лучше так? res.json(users ?? []);
 			return res.json(users);
 		} catch (error) {
 			next(error);

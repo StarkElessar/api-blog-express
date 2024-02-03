@@ -1,17 +1,17 @@
 import 'reflect-metadata';
 import { inject, injectable } from 'inversify';
 import { existsSync, mkdirSync } from 'fs';
-import multer from 'multer';
+import { StorageEngine, diskStorage } from 'multer';
 
 import { DiTypes } from '../diTypes';
 import { ILogger } from '../types/logger.interface';
 
 @injectable()
 export class MulterConfig {
-	private readonly _storage: multer.StorageEngine;
+	private readonly _storage: StorageEngine;
 
 	constructor(@inject(DiTypes.ILogger) private _logger: ILogger) {
-		this._storage = multer.diskStorage({
+		this._storage = diskStorage({
 			destination: (req, file: Express.Multer.File, cb): void => {
 				if (!existsSync('uploads')) {
 					mkdirSync('uploads');
